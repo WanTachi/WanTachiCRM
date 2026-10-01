@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { brand } from "@/lib/config/brand";
 
-const navigation = [{ label: "Обзор", href: "/", icon: "◫" }];
+const navigation = [
+  { label: "Обзор", href: "/", icon: "◫" },
+  { label: "Аккаунты", href: "/crm/accounts", icon: "▦", permissions: ["accounts.read", "accounts.manage"] },
+  { label: "Контакты", href: "/crm/contacts", icon: "◎", permissions: ["contacts.read", "contacts.manage"] },
+];
 
-export function Sidebar() {
+export function Sidebar({ permissions }: { permissions: ReadonlySet<string> }) {
+  const visibleNavigation = navigation.filter(
+    (item) => !item.permissions || item.permissions.some((permission) => permissions.has(permission)),
+  );
+
   return (
     <aside className="sidebar" aria-label="Основная навигация">
       <Link className="brand-lockup" href="/" aria-label={`${brand.name}, на главную`}>
@@ -12,8 +20,8 @@ export function Sidebar() {
       </Link>
       <div className="sidebar-section-label">РАБОЧЕЕ ПРОСТРАНСТВО</div>
       <nav className="sidebar-nav">
-        {navigation.map((item) => (
-          <Link className="nav-link nav-link--active" href={item.href} key={item.href}>
+        {visibleNavigation.map((item) => (
+          <Link className="nav-link" href={item.href} key={item.href}>
             <span className="nav-icon" aria-hidden="true">{item.icon}</span>
             {item.label}
           </Link>

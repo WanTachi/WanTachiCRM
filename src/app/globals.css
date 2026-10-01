@@ -141,6 +141,32 @@ button, input { font: inherit; }
 .state-card { width: min(100%, 32rem); padding: 2rem; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface-raised); box-shadow: var(--shadow-md); }
 .state-card h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.04em; }
 .state-card p { margin: 0.75rem 0 1.3rem; color: var(--text-muted); line-height: 1.6; }
+.crm-panel { display: grid; gap: 1.15rem; margin-top: 2rem; padding: 1.35rem; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-raised); box-shadow: var(--shadow-sm); }
+.crm-panel-heading, .crm-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.crm-panel-heading .section-heading, .crm-list-heading .section-heading { margin: 0; }
+.crm-text-link { color: var(--accent); font-size: 0.8rem; font-weight: 650; }
+.crm-form { display: grid; gap: 0.65rem; }
+.crm-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem 1rem; }
+.crm-field { display: grid; gap: 0.45rem; min-width: 0; }
+.crm-field--wide { grid-column: 1 / -1; }
+.crm-select { min-height: 2.6rem; }
+.crm-section { margin-top: 2.25rem; }
+.crm-list-heading { margin-bottom: 1rem; }
+.crm-record-list { display: grid; gap: 0.75rem; }
+.crm-record { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.crm-record-main { min-width: 0; }
+.crm-record-main h3, .crm-empty-state h3 { margin: 0; font-size: 0.98rem; font-weight: 650; }
+.crm-record-details { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin-top: 0.55rem; color: var(--text-muted); font-size: 0.78rem; line-height: 1.5; }
+.crm-record-actions { display: flex; flex: 0 0 auto; align-items: flex-start; gap: 0.45rem; }
+.crm-archive-control { display: grid; justify-items: end; }
+.button-link { display: inline-flex; min-height: 2rem; align-items: center; justify-content: center; padding: 0 0.7rem; border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 0.78rem; font-weight: 600; }
+.button-link--secondary { border-color: var(--border); background: var(--surface-raised); color: var(--text); }
+.crm-empty-state { display: grid; gap: 0.55rem; }
+.crm-empty-state p, .crm-notice-card p { margin: 0; color: var(--text-muted); line-height: 1.6; }
+.crm-notice { margin-top: 1.5rem; padding: 0.9rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-subtle); color: var(--text-muted); }
+.crm-notice-card h1 { margin: 0; font-size: 1.35rem; }
+.crm-notice-card p { margin-top: 0.6rem; }
+.crm-loading-card { margin-top: 1.5rem; color: var(--text-muted); }
 
 @media (max-width: 760px) {
   :root { --sidebar-width: 4.25rem; }
@@ -159,4 +185,8 @@ button, input { font: inherit; }
   .welcome-panel::after { right: -11rem; opacity: 0.35; }
   .foundation-grid { grid-template-columns: 1fr; gap: 0.75rem; }
   .section-heading { margin-top: 1.8rem; }
+  .crm-form-grid { grid-template-columns: 1fr; }
+  .crm-field--wide { grid-column: auto; }
+  .crm-record { flex-direction: column; }
+  .crm-record-actions { flex-wrap: wrap; }
 }
