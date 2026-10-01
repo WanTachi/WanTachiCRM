@@ -1,7 +1,234 @@
 import type { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { CrmAccount, CrmContact, CrmResult } from "@/lib/crm/types";
+import type {
+  CrmAccount,
+  CrmContact,
+  CrmDeal,
+  CrmMemberOption,
+  CrmPipeline,
+  CrmPipelineStage,
+  CrmPipelineWithStageCount,
+  CrmResult,
+} from "@/lib/crm/types";
 
 type ServerSupabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+export async function listPipelinesForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmPipeline[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_pipelines")
+      .select("id, name, description, owner_user_id, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить воронки." } };
+    return { ok: true, value: (data ?? []) as CrmPipeline[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить воронки." } };
+  }
+}
+
+export async function listPipelinesWithStageCountsForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmPipelineWithStageCount[]>> {
+  const pipelines = await listPipelinesForOrganization(supabase, organizationId);
+  if (!pipelines.ok) return pipelines;
+  if (pipelines.value.length === 0) return { ok: true, value: [] };
+
+  try {
+    const pipelineIds = pipelines.value.map((pipeline) => pipeline.id);
+    const { data, error } = await supabase
+      .from("crm_pipeline_stages")
+      .select("pipeline_id")
+      .eq("organization_id", organizationId)
+      .in("pipeline_id", pipelineIds)
+      .is("archived_at", null);
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронок." } };
+    const stageCounts = new Map<string, number>();
+    for (const row of data ?? []) {
+      stageCounts.set(row.pipeline_id, (stageCounts.get(row.pipeline_id) ?? 0) + 1);
+    }
+    return {
+      ok: true,
+      value: pipelines.value.map((pipeline) => ({
+        ...pipeline,
+        active_stage_count: stageCounts.get(pipeline.id) ?? 0,
+      })),
+    };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронок." } };
+  }
+}
+
+export async function getActivePipelineForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  pipelineId: string,
+): Promise<CrmResult<CrmPipeline | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_pipelines")
+      .select("id, name, description, owner_user_id, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("id", pipelineId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить воронку." } };
+    return { ok: true, value: data as CrmPipeline | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить воронку." } };
+  }
+}
+
+export async function listStagesForPipeline(
+  supabase: ServerSupabase,
+  organizationId: string,
+  pipelineId: string,
+): Promise<CrmResult<CrmPipelineStage[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_pipeline_stages")
+      .select("id, pipeline_id, name, position, probability, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("pipeline_id", pipelineId)
+      .is("archived_at", null)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронки." } };
+    return { ok: true, value: (data ?? []) as CrmPipelineStage[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронки." } };
+  }
+}
+
+export async function listActiveStagesForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmPipelineStage[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_pipeline_stages")
+      .select("id, pipeline_id, name, position, probability, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .order("position", { ascending: true });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронок." } };
+    return { ok: true, value: (data ?? []) as CrmPipelineStage[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить этапы воронок." } };
+  }
+}
+
+export async function getActiveStageForPipeline(
+  supabase: ServerSupabase,
+  organizationId: string,
+  pipelineId: string,
+  stageId: string,
+): Promise<CrmResult<CrmPipelineStage | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_pipeline_stages")
+      .select("id, pipeline_id, name, position, probability, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("pipeline_id", pipelineId)
+      .eq("id", stageId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось проверить выбранный этап." } };
+    return { ok: true, value: data as CrmPipelineStage | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось проверить выбранный этап." } };
+  }
+}
+
+export async function listDealsForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmDeal[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deals")
+      .select("id, pipeline_id, stage_id, account_id, contact_id, name, description, amount, currency, owner_user_id, expected_close_date, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки." } };
+    return { ok: true, value: (data ?? []) as CrmDeal[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки." } };
+  }
+}
+
+export async function getActiveDealForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  dealId: string,
+): Promise<CrmResult<CrmDeal | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deals")
+      .select("id, pipeline_id, stage_id, account_id, contact_id, name, description, amount, currency, owner_user_id, expected_close_date, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("id", dealId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделку." } };
+    return { ok: true, value: data as CrmDeal | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделку." } };
+  }
+}
+
+export async function listAssignableMembersForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmMemberOption[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("memberships")
+      .select("user_id")
+      .eq("organization_id", organizationId)
+      .eq("status", "active")
+      .order("created_at", { ascending: true });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить список владельцев." } };
+    return { ok: true, value: (data ?? []) as CrmMemberOption[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить список владельцев." } };
+  }
+}
+
+export async function isActiveOrganizationMember(
+  supabase: ServerSupabase,
+  organizationId: string,
+  userId: string,
+): Promise<CrmResult<boolean>> {
+  try {
+    const { data, error } = await supabase
+      .from("memberships")
+      .select("user_id")
+      .eq("organization_id", organizationId)
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось проверить выбранного владельца." } };
+    return { ok: true, value: Boolean(data) };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось проверить выбранного владельца." } };
+  }
+}
 
 export async function listAccountsForOrganization(
   supabase: ServerSupabase,

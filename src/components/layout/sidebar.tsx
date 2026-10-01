@@ -5,6 +5,8 @@ const navigation = [
   { label: "Обзор", href: "/", icon: "◫" },
   { label: "Аккаунты", href: "/crm/accounts", icon: "▦", permissions: ["accounts.read", "accounts.manage"] },
   { label: "Контакты", href: "/crm/contacts", icon: "◎", permissions: ["contacts.read", "contacts.manage"] },
+  { label: "Воронки", href: "/crm/pipelines", icon: "↗", permissions: ["pipelines.read", "pipelines.manage"] },
+  { label: "Сделки", href: "/crm/deals", icon: "◇", permissions: ["deals.read", "deals.manage"] },
 ];
 
 export function Sidebar({ permissions }: { permissions: ReadonlySet<string> }) {

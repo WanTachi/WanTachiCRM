@@ -35,21 +35,31 @@ export async function resolveCrmAccess(): Promise<CrmResult<CrmAccess>> {
   }
 }
 
-export function permissionError(resource: "аккаунтам" | "контактам", mode: "read" | "manage"): CrmActionError {
+export function permissionError(
+  resource: "аккаунтам" | "контактам" | "воронкам" | "этапам" | "сделкам",
+  mode: "read" | "manage",
+): CrmActionError {
   const operation = mode === "read" ? "просматривать" : "изменять";
-  return {
-    code: "forbidden",
-    message: `У вас нет разрешения ${operation} ${resource}.`,
-  };
+  const resourceName = {
+    аккаунтам: "аккаунты",
+    контактам: "контакты",
+    воронкам: "воронки",
+    этапам: "этапы",
+    сделкам: "сделки",
+  }[resource];
+  return { code: "forbidden", message: `У вас нет разрешения ${operation} ${resourceName}.` };
 }
 
 export function unavailableError(message: string): CrmActionError {
   return { code: "unavailable", message };
 }
 
-export function notFoundError(record: "аккаунт" | "контакт"): CrmActionError {
+export function notFoundError(record: "аккаунт" | "контакт" | "воронка" | "этап" | "сделка"): CrmActionError {
+  const feminine = record === "воронка" || record === "сделка";
+  const article = feminine ? "Эта" : "Этот";
+  const unavailable = feminine ? "не найдена, архивирована или недоступна" : "не найден, архивирован или недоступен";
   return {
     code: "not_found",
-    message: `Этот ${record} не найден, архивирован или недоступен в активной организации.`,
+    message: `${article} ${record} ${unavailable} в активной организации.`,
   };
 }

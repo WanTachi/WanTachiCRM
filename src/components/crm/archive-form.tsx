@@ -4,10 +4,11 @@ import { useActionState } from "react";
 import type { CrmMutationAction } from "@/lib/crm/types";
 import { Button } from "@/components/ui/button";
 
-export function ArchiveForm({ id, label, action }: {
+export function ArchiveForm({ id, label, action, pipelineId }: {
   id: string;
   label: string;
   action: CrmMutationAction;
+  pipelineId?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
 
@@ -15,6 +16,7 @@ export function ArchiveForm({ id, label, action }: {
     <div className="crm-archive-control">
       <form action={formAction}>
         <input type="hidden" name="id" value={id} />
+        {pipelineId ? <input type="hidden" name="pipeline_id" value={pipelineId} /> : null}
         <Button type="submit" variant="secondary" size="sm" disabled={pending} aria-label={`Архивировать: ${label}`}>
           {pending ? "Архивируем…" : "Архивировать"}
         </Button>

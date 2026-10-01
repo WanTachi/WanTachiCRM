@@ -150,6 +150,8 @@ button, input { font: inherit; }
 .crm-field { display: grid; gap: 0.45rem; min-width: 0; }
 .crm-field--wide { grid-column: 1 / -1; }
 .crm-select { min-height: 2.6rem; }
+.crm-textarea { min-height: 6rem; padding: 0.7rem 0.8rem; resize: vertical; }
+.crm-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .crm-section { margin-top: 2.25rem; }
 .crm-list-heading { margin-bottom: 1rem; }
 .crm-record-list { display: grid; gap: 0.75rem; }
@@ -187,6 +189,7 @@ button, input { font: inherit; }
   .section-heading { margin-top: 1.8rem; }
   .crm-form-grid { grid-template-columns: 1fr; }
   .crm-field--wide { grid-column: auto; }
+  .crm-title-row { flex-direction: column; }
   .crm-record { flex-direction: column; }
   .crm-record-actions { flex-wrap: wrap; }
 }

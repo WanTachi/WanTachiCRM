@@ -41,6 +41,49 @@ export type CrmContact = {
   updated_at: string;
 };
 
+export type CrmPipeline = {
+  id: string;
+  name: string;
+  description: string | null;
+  owner_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmPipelineWithStageCount = CrmPipeline & {
+  active_stage_count: number;
+};
+
+export type CrmPipelineStage = {
+  id: string;
+  pipeline_id: string;
+  name: string;
+  position: number;
+  probability: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmDeal = {
+  id: string;
+  pipeline_id: string;
+  stage_id: string;
+  account_id: string | null;
+  contact_id: string | null;
+  name: string;
+  description: string | null;
+  amount: number | string | null;
+  currency: string | null;
+  owner_user_id: string | null;
+  expected_close_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmMemberOption = {
+  user_id: string;
+};
+
 export type CrmAccountInput = {
   name: string;
   website: string | null;
@@ -55,6 +98,32 @@ export type CrmContactInput = {
   phone: string | null;
   job_title: string | null;
   account_id: string | null | undefined;
+};
+
+export type CrmPipelineInput = {
+  name: string;
+  description: string | null;
+  owner_user_id: string | null | undefined;
+};
+
+export type CrmPipelineStageInput = {
+  pipeline_id: string;
+  name: string;
+  position: number;
+  probability: number | null;
+};
+
+export type CrmDealInput = {
+  pipeline_id: string;
+  stage_id: string;
+  account_id: string | null | undefined;
+  contact_id: string | null | undefined;
+  name: string;
+  description: string | null;
+  amount: string | null;
+  currency: string | null;
+  owner_user_id: string | null | undefined;
+  expected_close_date: string | null;
 };
 
 export type CrmAccess = {
