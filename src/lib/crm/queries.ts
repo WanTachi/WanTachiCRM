@@ -3,6 +3,8 @@ import type {
   CrmAccount,
   CrmContact,
   CrmDeal,
+  CrmTask,
+  CrmActivity,
   CrmMemberOption,
   CrmPipeline,
   CrmPipelineStage,
@@ -11,6 +13,45 @@ import type {
 } from "@/lib/crm/types";
 
 type ServerSupabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+export async function listTasksForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmTask[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_tasks")
+      .select("id, title, description, status, priority, due_at, owner_user_id, account_id, contact_id, deal_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи." } };
+    return { ok: true, value: (data ?? []) as CrmTask[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи." } };
+  }
+}
+
+export async function listActivitiesForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmActivity[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_activities")
+      .select("id, type, subject, body, occurred_at, account_id, contact_id, deal_id, task_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .order("occurred_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности." } };
+    return { ok: true, value: (data ?? []) as CrmActivity[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности." } };
+  }
+}
 
 export async function listPipelinesForOrganization(
   supabase: ServerSupabase,

@@ -36,7 +36,7 @@ export async function resolveCrmAccess(): Promise<CrmResult<CrmAccess>> {
 }
 
 export function permissionError(
-  resource: "аккаунтам" | "контактам" | "воронкам" | "этапам" | "сделкам",
+  resource: "аккаунтам" | "контактам" | "воронкам" | "этапам" | "сделкам" | "задачам" | "активностям",
   mode: "read" | "manage",
 ): CrmActionError {
   const operation = mode === "read" ? "просматривать" : "изменять";
@@ -46,6 +46,8 @@ export function permissionError(
     воронкам: "воронки",
     этапам: "этапы",
     сделкам: "сделки",
+    задачам: "задачи",
+    активностям: "активности",
   }[resource];
   return { code: "forbidden", message: `У вас нет разрешения ${operation} ${resourceName}.` };
 }
@@ -54,8 +56,10 @@ export function unavailableError(message: string): CrmActionError {
   return { code: "unavailable", message };
 }
 
-export function notFoundError(record: "аккаунт" | "контакт" | "воронка" | "этап" | "сделка"): CrmActionError {
-  const feminine = record === "воронка" || record === "сделка";
+export function notFoundError(
+  record: "аккаунт" | "контакт" | "воронка" | "этап" | "сделка" | "задача" | "активность",
+): CrmActionError {
+  const feminine = record === "воронка" || record === "сделка" || record === "задача" || record === "активность";
   const article = feminine ? "Эта" : "Этот";
   const unavailable = feminine ? "не найдена, архивирована или недоступна" : "не найден, архивирован или недоступен";
   return {

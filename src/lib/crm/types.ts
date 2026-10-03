@@ -80,6 +80,41 @@ export type CrmDeal = {
   updated_at: string;
 };
 
+export type CrmTaskStatus = "open" | "in_progress" | "completed" | "cancelled";
+export type CrmTaskPriority = "low" | "normal" | "high" | "urgent";
+export type CrmActivityType = "note" | "call" | "meeting" | "email" | "other";
+
+export type CrmTask = {
+  id: string;
+  title: string;
+  description: string | null;
+  status: CrmTaskStatus;
+  priority: CrmTaskPriority;
+  due_at: string | null;
+  owner_user_id: string | null;
+  account_id: string | null;
+  contact_id: string | null;
+  deal_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmActivity = {
+  id: string;
+  type: CrmActivityType;
+  subject: string | null;
+  body: string | null;
+  occurred_at: string;
+  account_id: string | null;
+  contact_id: string | null;
+  deal_id: string | null;
+  task_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CrmMemberOption = {
   user_id: string;
 };
@@ -124,6 +159,29 @@ export type CrmDealInput = {
   currency: string | null;
   owner_user_id: string | null | undefined;
   expected_close_date: string | null;
+};
+
+export type CrmTaskInput = {
+  title: string;
+  description: string | null;
+  status: CrmTaskStatus;
+  priority: CrmTaskPriority;
+  due_at: string | null;
+  owner_user_id: string | null | undefined;
+  account_id: string | null | undefined;
+  contact_id: string | null | undefined;
+  deal_id: string | null | undefined;
+};
+
+export type CrmActivityInput = {
+  type: CrmActivityType;
+  subject: string | null;
+  body: string | null;
+  occurred_at: string | null;
+  account_id: string | null | undefined;
+  contact_id: string | null | undefined;
+  deal_id: string | null | undefined;
+  task_id: string | null | undefined;
 };
 
 export type CrmAccess = {

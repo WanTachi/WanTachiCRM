@@ -1,11 +1,16 @@
 import type {
   CrmActionError,
+  CrmActivityInput,
+  CrmActivityType,
   CrmAccountInput,
   CrmContactInput,
   CrmDealInput,
   CrmPipelineInput,
   CrmPipelineStage,
   CrmPipelineStageInput,
+  CrmTaskInput,
+  CrmTaskPriority,
+  CrmTaskStatus,
   CrmResult,
 } from "@/lib/crm/types";
 
@@ -228,6 +233,115 @@ export function validateDealForm(formData: FormData): CrmResult<CrmDealInput> {
   };
 }
 
+const TASK_STATUSES: CrmTaskStatus[] = ["open", "in_progress", "completed", "cancelled"];
+const TASK_PRIORITIES: CrmTaskPriority[] = ["low", "normal", "high", "urgent"];
+const ACTIVITY_TYPES: CrmActivityType[] = ["note", "call", "meeting", "email", "other"];
+
+function dateAtUtcEndOfDay(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return `${value}T23:59:59.999Z`;
+}
+
+function dateAtUtcMidday(value: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) return null;
+  return `${value}T12:00:00.000Z`;
+}
+
+export function validateTaskForm(formData: FormData): CrmResult<CrmTaskInput> {
+  const title = getText(formData, "title");
+  const description = getText(formData, "description");
+  const status = getText(formData, "status");
+  const priority = getText(formData, "priority");
+  const dueDate = getText(formData, "due_date");
+
+  if (title === null || title.length < 1 || title.length > 200) {
+    return invalid("Укажите название задачи длиной от 1 до 200 символов.");
+  }
+  if (description === null || description.length > 5000) {
+    return invalid("Описание задачи должно содержать не более 5000 символов.");
+  }
+  if (status === null || !TASK_STATUSES.includes(status as CrmTaskStatus)) {
+    return invalid("Выберите допустимый статус задачи.");
+  }
+  if (priority === null || !TASK_PRIORITIES.includes(priority as CrmTaskPriority)) {
+    return invalid("Выберите допустимый приоритет задачи.");
+  }
+  if (dueDate === null) return invalid("Укажите допустимый срок задачи.");
+  const dueAt = dueDate ? dateAtUtcEndOfDay(dueDate) : null;
+  if (dueDate && !dueAt) return invalid("Укажите корректную дату срока.");
+
+  const ownerUserId = optionalUuid(formData, "owner_user_id", "ответственного");
+  if (!ownerUserId.ok) return ownerUserId;
+  const accountId = optionalUuid(formData, "account_id", "аккаунт");
+  if (!accountId.ok) return accountId;
+  const contactId = optionalUuid(formData, "contact_id", "контакт");
+  if (!contactId.ok) return contactId;
+  const dealId = optionalUuid(formData, "deal_id", "сделку");
+  if (!dealId.ok) return dealId;
+
+  return {
+    ok: true,
+    value: {
+      title,
+      description: description || null,
+      status: status as CrmTaskStatus,
+      priority: priority as CrmTaskPriority,
+      due_at: dueAt,
+      owner_user_id: ownerUserId.value,
+      account_id: accountId.value,
+      contact_id: contactId.value,
+      deal_id: dealId.value,
+    },
+  };
+}
+
+export function validateActivityForm(formData: FormData): CrmResult<CrmActivityInput> {
+  const type = getText(formData, "type");
+  const subject = getText(formData, "subject");
+  const body = getText(formData, "body");
+  const occurredDate = getText(formData, "occurred_date");
+
+  if (type === null || !ACTIVITY_TYPES.includes(type as CrmActivityType)) {
+    return invalid("Выберите допустимый тип активности.");
+  }
+  if (subject === null || subject.length > 200) {
+    return invalid("Тема активности должна содержать не более 200 символов.");
+  }
+  if (body === null || body.length > 12000) {
+    return invalid("Описание активности должно содержать не более 12000 символов.");
+  }
+  if (occurredDate === null) return invalid("Укажите допустимую дату активности.");
+  const occurredAt = occurredDate ? dateAtUtcMidday(occurredDate) : null;
+  if (occurredDate && !occurredAt) return invalid("Укажите корректную дату активности.");
+
+  const accountId = optionalUuid(formData, "account_id", "аккаунт");
+  if (!accountId.ok) return accountId;
+  const contactId = optionalUuid(formData, "contact_id", "контакт");
+  if (!contactId.ok) return contactId;
+  const dealId = optionalUuid(formData, "deal_id", "сделку");
+  if (!dealId.ok) return dealId;
+  const taskId = optionalUuid(formData, "task_id", "задачу");
+  if (!taskId.ok) return taskId;
+
+  return {
+    ok: true,
+    value: {
+      type: type as CrmActivityType,
+      subject: subject || null,
+      body: body || null,
+      occurred_at: occurredAt,
+      account_id: accountId.value,
+      contact_id: contactId.value,
+      deal_id: dealId.value,
+      task_id: taskId.value,
+    },
+  };
+}
+
 export function isStageInPipeline(
   stages: Pick<CrmPipelineStage, "id" | "pipeline_id">[],
   pipelineId: string,
@@ -237,7 +351,7 @@ export function isStageInPipeline(
 }
 
 export function invalidRecordIdError(
-  noun: "аккаунт" | "контакт" | "воронку" | "этап" | "сделку",
+  noun: "аккаунт" | "контакт" | "воронку" | "этап" | "сделку" | "задачу" | "активность",
 ): CrmActionError {
   return { code: "invalid_input", message: `Укажите корректный идентификатор: ${noun}.` };
 }
