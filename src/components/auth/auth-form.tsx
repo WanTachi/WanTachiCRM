@@ -25,6 +25,10 @@ export function AuthForm({ mode, action, nextPath }: {
       <label className="auth-label" htmlFor="password">Пароль</label>
       <Input id="password" name="password" type="password" autoComplete={isRegister ? "new-password" : "current-password"} required minLength={isRegister ? 10 : 1} />
 
+      {!isRegister ? (
+        <p className="auth-switch"><Link href="/forgot-password">Забыли пароль?</Link></p>
+      ) : null}
+
       {isRegister ? (
         <>
           <label className="auth-label" htmlFor="confirmation">Повторите пароль</label>
