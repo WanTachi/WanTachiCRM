@@ -114,6 +114,7 @@ export async function createTaskAction(
   }
 
   revalidatePath("/crm/tasks");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/activities");
   return { success: "Задача создана." };
 }
@@ -168,6 +169,7 @@ export async function updateTaskAction(
   }
 
   revalidatePath("/crm/tasks");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/activities");
   return { success: "Изменения задачи сохранены." };
 }

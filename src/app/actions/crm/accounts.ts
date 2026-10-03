@@ -40,6 +40,7 @@ export async function createAccountAction(
   }
 
   revalidatePath("/crm/accounts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts");
   return { success: "Аккаунт создан." };
 }
@@ -79,6 +80,7 @@ export async function updateAccountAction(
   }
 
   revalidatePath("/crm/accounts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts");
   return { success: "Изменения аккаунта сохранены." };
 }
@@ -107,6 +109,7 @@ export async function archiveAccountAction(
   if (!result.ok) return { error: result.error };
 
   revalidatePath("/crm/accounts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts");
   return { success: "Аккаунт архивирован." };
 }

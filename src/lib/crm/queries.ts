@@ -370,3 +370,111 @@ export async function listContactsForOrganization(
     return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить контакты." } };
   }
 }
+
+export async function getActiveAccountForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  accountId: string,
+): Promise<CrmResult<CrmAccount | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_accounts")
+      .select("id, name, website, phone, industry, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("id", accountId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аккаунт." } };
+    return { ok: true, value: data as CrmAccount | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аккаунт." } };
+  }
+}
+
+export async function listContactsForAccount(
+  supabase: ServerSupabase,
+  organizationId: string,
+  accountId: string,
+): Promise<CrmResult<CrmContact[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_contacts")
+      .select("id, first_name, last_name, email, phone, job_title, account_id, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("account_id", accountId)
+      .is("archived_at", null)
+      .order("last_name", { ascending: true, nullsFirst: true })
+      .order("first_name", { ascending: true });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить контакты аккаунта." } };
+    return { ok: true, value: (data ?? []) as CrmContact[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить контакты аккаунта." } };
+  }
+}
+
+export async function listDealsForAccount(
+  supabase: ServerSupabase,
+  organizationId: string,
+  accountId: string,
+): Promise<CrmResult<CrmDeal[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deals")
+      .select("id, pipeline_id, stage_id, account_id, contact_id, name, description, amount, currency, owner_user_id, expected_close_date, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("account_id", accountId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки аккаунта." } };
+    return { ok: true, value: (data ?? []) as CrmDeal[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки аккаунта." } };
+  }
+}
+
+export async function listTasksForAccount(
+  supabase: ServerSupabase,
+  organizationId: string,
+  accountId: string,
+): Promise<CrmResult<CrmTask[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_tasks")
+      .select("id, title, description, status, priority, due_at, owner_user_id, account_id, contact_id, deal_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("account_id", accountId)
+      .is("archived_at", null)
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи аккаунта." } };
+    return { ok: true, value: (data ?? []) as CrmTask[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи аккаунта." } };
+  }
+}
+
+export async function listActivitiesForAccount(
+  supabase: ServerSupabase,
+  organizationId: string,
+  accountId: string,
+): Promise<CrmResult<CrmActivity[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_activities")
+      .select("id, type, subject, body, occurred_at, account_id, contact_id, deal_id, task_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("account_id", accountId)
+      .is("archived_at", null)
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности аккаунта." } };
+    return { ok: true, value: (data ?? []) as CrmActivity[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности аккаунта." } };
+  }
+}

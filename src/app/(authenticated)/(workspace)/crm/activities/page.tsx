@@ -108,7 +108,7 @@ export default async function ActivitiesPage() {
                     <div className="crm-record-details">
                       <span>Тип: {activityLabels[activity.type]}</span>
                       <span>Событие: {formatOccurredAt(activity.occurred_at)}</span>
-                      {activity.account_id ? <Association href={canReadAccounts ? `/crm/accounts?edit=${activity.account_id}` : undefined} label="Аккаунт" value={accountNames.get(activity.account_id) ?? "недоступен или архивирован"} /> : null}
+                      {activity.account_id ? <Association href={canReadAccounts ? `/crm/accounts/${activity.account_id}` : undefined} label="Аккаунт" value={accountNames.get(activity.account_id) ?? "недоступен или архивирован"} /> : null}
                       {activity.contact_id ? <Association href={canReadContacts ? `/crm/contacts?edit=${activity.contact_id}` : undefined} label="Контакт" value={contactNames.get(activity.contact_id) ?? "недоступен или архивирован"} /> : null}
                       {activity.deal_id ? <Association href={canReadDeals ? `/crm/deals?edit=${activity.deal_id}` : undefined} label="Сделка" value={dealNames.get(activity.deal_id) ?? "недоступна или архивирована"} /> : null}
                       {activity.task_id ? <Association href={canReadTasks ? `/crm/tasks?edit=${activity.task_id}` : undefined} label="Задача" value={taskNames.get(activity.task_id) ?? "недоступна или архивирована"} /> : null}

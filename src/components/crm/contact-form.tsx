@@ -10,11 +10,13 @@ export function ContactForm({
   contact,
   accounts,
   canReadAccounts,
+  defaultAccountId,
   action,
 }: {
   contact?: CrmContact;
   accounts: CrmAccount[];
   canReadAccounts: boolean;
+  defaultAccountId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -47,7 +49,7 @@ export function ContactForm({
         {canReadAccounts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-account`}>Аккаунт</label>
-            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={contact?.account_id ?? ""}>
+            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={contact?.account_id ?? defaultAccountId ?? ""}>
               <option value="">Без аккаунта</option>
               {contact?.account_id && !accounts.some((account) => account.id === contact.account_id) ? (
                 <option value={contact.account_id}>Связанный архивированный аккаунт</option>

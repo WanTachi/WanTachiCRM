@@ -26,6 +26,7 @@ export function DealForm({
   canAssignOwners,
   canReadAccounts,
   canReadContacts,
+  defaultAccountId,
   action,
 }: {
   deal?: CrmDeal;
@@ -38,6 +39,7 @@ export function DealForm({
   canAssignOwners: boolean;
   canReadAccounts: boolean;
   canReadContacts: boolean;
+  defaultAccountId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -53,6 +55,7 @@ export function DealForm({
   const availableStages = stages.filter((stage) => isStageInPipeline([stage], selectedPipelineId, stage.id));
   const accountOptions = accounts;
   const contactOptions = contacts;
+  const selectedAccountId = deal?.account_id ?? defaultAccountId ?? "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -106,7 +109,7 @@ export function DealForm({
         {canReadAccounts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-account`}>Аккаунт</label>
-            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={accountOptions.some((item) => item.id === deal?.account_id) ? deal?.account_id ?? "" : ""}>
+            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={accountOptions.some((item) => item.id === selectedAccountId) ? selectedAccountId : ""}>
               <option value="">Без аккаунта</option>
               {accountOptions.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
             </select>

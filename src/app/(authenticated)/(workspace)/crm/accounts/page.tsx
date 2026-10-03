@@ -110,7 +110,7 @@ export default async function AccountsPage({ searchParams }: AccountsPageProps) 
                 <tbody>
                   {visibleAccounts.map((account) => (
                     <tr key={account.id}>
-                      <td><span className="table-primary">{account.name}</span>{account.website ? <span className="table-secondary">{account.website}</span> : null}</td>
+                      <td><Link className="table-primary crm-text-link" href={`/crm/accounts/${account.id}`}>{account.name}</Link>{account.website ? <span className="table-secondary">{account.website}</span> : null}</td>
                       <td>{account.industry || <span className="table-secondary">—</span>}</td>
                       <td>{account.phone || <span className="table-secondary">—</span>}</td>
                       <td>{new Date(account.updated_at).toLocaleDateString("ru-RU")}</td>

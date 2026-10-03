@@ -14,6 +14,7 @@ export function ActivityForm({
   canReadContacts,
   canReadDeals,
   canReadTasks,
+  defaultAccountId,
   action,
 }: {
   accounts: CrmAccount[];
@@ -24,6 +25,7 @@ export function ActivityForm({
   canReadContacts: boolean;
   canReadDeals: boolean;
   canReadTasks: boolean;
+  defaultAccountId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -57,7 +59,7 @@ export function ActivityForm({
         {canReadAccounts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor="new-activity-account">Аккаунт</label>
-            <select className="input crm-select" id="new-activity-account" name="account_id" defaultValue="">
+            <select className="input crm-select" id="new-activity-account" name="account_id" defaultValue={defaultAccountId ?? ""}>
               <option value="">Без аккаунта</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
             </select>

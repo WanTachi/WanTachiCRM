@@ -72,6 +72,7 @@ export async function createContactAction(
   }
 
   revalidatePath("/crm/contacts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   return { success: "Контакт создан." };
 }
 
@@ -142,6 +143,7 @@ export async function updateContactAction(
   }
 
   revalidatePath("/crm/contacts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   return { success: "Изменения контакта сохранены." };
 }
 
@@ -178,5 +180,6 @@ export async function archiveContactAction(
   }
 
   revalidatePath("/crm/contacts");
+  revalidatePath("/crm/accounts/[accountId]", "page");
   return { success: "Контакт архивирован." };
 }

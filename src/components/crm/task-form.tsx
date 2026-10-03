@@ -23,6 +23,7 @@ export function TaskForm({
   canReadAccounts,
   canReadContacts,
   canReadDeals,
+  defaultAccountId,
   action,
 }: {
   task?: CrmTask;
@@ -35,12 +36,14 @@ export function TaskForm({
   canReadAccounts: boolean;
   canReadContacts: boolean;
   canReadDeals: boolean;
+  defaultAccountId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const prefix = task ? `task-${task.id}` : "new-task";
   const ownerIds = new Set(members.map((member) => member.user_id));
   ownerIds.add(currentUserId);
+  const selectedAccountId = task?.account_id ?? defaultAccountId ?? "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -93,7 +96,7 @@ export function TaskForm({
         {canReadAccounts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-account`}>Аккаунт</label>
-            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={accounts.some((item) => item.id === task?.account_id) ? task?.account_id ?? "" : ""}>
+            <select className="input crm-select" id={`${prefix}-account`} name="account_id" defaultValue={accounts.some((item) => item.id === selectedAccountId) ? selectedAccountId : ""}>
               <option value="">Без аккаунта</option>
               {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
             </select>
