@@ -45,9 +45,14 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
 
   return (
     <PageContainer>
-      <p className="eyebrow">CRM</p>
-      <h1 className="page-title">Pipelines</h1>
-      <p className="page-intro">Управляйте этапами продаж и воронками вашей организации.</p>
+      <div className="page-heading-row">
+        <div className="page-heading-copy">
+          <p className="eyebrow">CRM / ПРОДАЖИ</p>
+          <h1 className="page-title">Воронки</h1>
+          <p className="page-intro">Управляйте этапами продаж и воронками вашей организации.</p>
+        </div>
+        {canRead ? <span className="page-heading-meta">{pipelinesResult.value.length} всего</span> : null}
+      </div>
 
       {requestedEdit && !editingPipeline ? (
         <div className="crm-notice" role="status">{notFoundError("воронка").message}</div>

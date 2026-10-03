@@ -76,12 +76,42 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
     [contact.first_name, contact.last_name].filter(Boolean).join(" "),
   ]));
   const members = membersResult.ok ? membersResult.value : [];
+  const dealColumns = canReadPipelines
+    ? pipelinesResult.value.flatMap((pipeline) => stagesResult.value
+      .filter((stage) => stage.pipeline_id === pipeline.id)
+      .sort((left, right) => left.position - right.position)
+      .map((stage) => ({
+        id: stage.id,
+        pipelineName: pipeline.name,
+        stageName: stage.name,
+        position: stage.position,
+        deals: dealsResult.value.filter((deal) => deal.pipeline_id === pipeline.id && deal.stage_id === stage.id),
+      })))
+    : [];
+  const activeStageIds = new Set(dealColumns.map((column) => column.id));
+  const unplacedDeals = canReadPipelines
+    ? dealsResult.value.filter((deal) => !activeStageIds.has(deal.stage_id))
+    : dealsResult.value;
+  if (unplacedDeals.length > 0) {
+    dealColumns.push({
+      id: "unplaced",
+      pipelineName: canReadPipelines ? "Архивные или недоступные этапы" : "Воронка недоступна",
+      stageName: "Без активного этапа",
+      position: Number.MAX_SAFE_INTEGER,
+      deals: unplacedDeals,
+    });
+  }
 
   return (
     <PageContainer>
-      <p className="eyebrow">CRM</p>
-      <h1 className="page-title">Deals</h1>
-      <p className="page-intro">Отслеживайте сделки, их этапы и ожидаемые даты закрытия.</p>
+      <div className="page-heading-row">
+        <div className="page-heading-copy">
+          <p className="eyebrow">CRM / ПРОДАЖИ</p>
+          <h1 className="page-title">Сделки</h1>
+          <p className="page-intro">Отслеживайте сделки, их этапы и ожидаемые даты закрытия.</p>
+        </div>
+        {canRead ? <span className="page-heading-meta">{dealsResult.value.length} активных</span> : null}
+      </div>
 
       {requestedEdit && !editingDeal ? (
         <div className="crm-notice" role="status">{notFoundError("сделка").message}</div>
@@ -128,38 +158,54 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
       {canRead ? (
         <section className="crm-section" aria-labelledby="deals-list-heading">
           <div className="crm-list-heading">
-            <h2 className="section-heading" id="deals-list-heading">Активные сделки</h2>
-            <span className="field-hint">{dealsResult.value.length} записей</span>
+            <div>
+              <h2 className="section-heading" id="deals-list-heading">Доска продаж</h2>
+              <p className="section-description">Распределение по активным этапам воронок</p>
+            </div>
+            <span className="crm-list-meta">{dealColumns.filter((column) => column.id !== "unplaced").length} этапов</span>
           </div>
-          {dealsResult.value.length === 0 ? (
+          {dealColumns.length === 0 ? (
             <Card className="crm-empty-state">
               <h3>Сделок пока нет</h3>
               <p>{canManage ? "Добавьте первую сделку, чтобы начать отслеживать продажи." : "Когда в организации появятся сделки, они будут показаны здесь."}</p>
             </Card>
           ) : (
-            <div className="crm-record-list">
-              {dealsResult.value.map((deal) => (
-                <Card className="crm-record" key={deal.id}>
-                  <div className="crm-record-main">
-                    <h3>{deal.name}</h3>
-                    <div className="crm-record-details">
-                      <span>Воронка: {pipelineNames.get(deal.pipeline_id) ?? "недоступна или архивирована"}</span>
-                      <span>Этап: {stageNames.get(deal.stage_id) ?? "недоступен или архивирован"}</span>
-                      <span>Аккаунт: {deal.account_id ? accountNames.get(deal.account_id) ?? "недоступен или архивирован" : "не указан"}</span>
-                      <span>Контакт: {deal.contact_id ? contactNames.get(deal.contact_id) ?? "недоступен или архивирован" : "не указан"}</span>
-                      <span>Сумма: {formatAmount(deal.amount, deal.currency)}</span>
-                      <span>Закрытие: {deal.expected_close_date ?? "не указано"}</span>
-                      <span>Владелец: {deal.owner_user_id === access.value.userId ? "вы" : deal.owner_user_id ? "участник команды" : "не назначен"}</span>
-                      <span>Создана: {new Date(deal.created_at).toLocaleDateString("ru-RU")}</span>
+            <div className="deal-board" aria-label="Сделки по этапам">
+              {dealColumns.map((column, columnIndex) => (
+                <section className="deal-column" key={column.id} data-stage-tone={columnIndex % 4} aria-label={`${column.pipelineName}: ${column.stageName}`}>
+                  <header className="deal-column-header">
+                    <div className="deal-column-title">
+                      <span className="deal-pipeline-name">{column.pipelineName}</span>
+                      <h3 className="deal-stage-name">{column.stageName}</h3>
                     </div>
-                  </div>
-                  {canManage ? (
-                    <div className="crm-record-actions">
-                      <Link className="button-link button-link--secondary" href={`/crm/deals?edit=${deal.id}`}>Изменить</Link>
-                      <ArchiveForm id={deal.id} label={deal.name} pipelineId={deal.pipeline_id} action={archiveDealAction} />
-                    </div>
-                  ) : null}
-                </Card>
+                    <span className="deal-column-total">{column.deals.length}</span>
+                  </header>
+                  {column.deals.map((deal) => (
+                    <Card className="deal-card" key={deal.id}>
+                      <Link className="deal-card-title" href={`/crm/deals?edit=${deal.id}`}>{deal.name}</Link>
+                      <div className="deal-card-meta">
+                        <span>{formatAmount(deal.amount, deal.currency)}</span>
+                        <span>{deal.expected_close_date ?? "Без срока"}</span>
+                      </div>
+                      <div className="deal-card-meta">
+                        <span>{contactNames.get(deal.contact_id ?? "") ?? "Без контакта"}</span>
+                        <span>{deal.account_id ? accountNames.get(deal.account_id) ?? "Аккаунт недоступен" : "Без аккаунта"}</span>
+                        <span>{deal.owner_user_id === access.value.userId ? "Вы" : deal.owner_user_id ? "Участник команды" : "Без владельца"}</span>
+                      </div>
+                      {pipelineNames.get(deal.pipeline_id) ? <span className="table-secondary">{pipelineNames.get(deal.pipeline_id)}</span> : null}
+                      {canManage ? (
+                        <div className="deal-card-footer">
+                          <span className="deal-stage-chip">{stageNames.get(deal.stage_id) ?? "Этап неактивен"}</span>
+                          <div className="deal-card-actions">
+                            <Link className="button-link button-link--secondary" href={`/crm/deals?edit=${deal.id}`}>Изменить</Link>
+                            <ArchiveForm id={deal.id} label={deal.name} pipelineId={deal.pipeline_id} action={archiveDealAction} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </Card>
+                  ))}
+                  {column.deals.length === 0 ? <p className="deal-column-empty">Нет сделок на этом этапе</p> : null}
+                </section>
               ))}
             </div>
           )}
