@@ -102,5 +102,6 @@ export async function createActivityAction(
 
   revalidatePath("/crm/activities");
   revalidatePath("/crm/accounts/[accountId]", "page");
+  revalidatePath("/crm/contacts/[contactId]", "page");
   return { success: "Активность создана." };
 }

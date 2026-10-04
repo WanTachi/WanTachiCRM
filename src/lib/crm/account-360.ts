@@ -1,4 +1,5 @@
 import type { CrmActivity } from "@/lib/crm/types";
+import { getReadableActivityLink } from "./activity-links";
 
 export type Account360ActivityLink = {
   label: string;
@@ -24,7 +25,7 @@ export function buildAccount360ActivityLinks(
     activity.contact_id ? {
       label: "Контакт",
       value: references.contactNames.get(activity.contact_id) ?? "недоступен или архивирован",
-      href: references.canReadContacts ? (references.canManageContacts ? `/crm/contacts?edit=${activity.contact_id}` : "/crm/contacts") : undefined,
+      href: getReadableActivityLink("contacts", activity.contact_id, references.contactNames, references.canReadContacts)?.href,
     } : null,
     activity.deal_id ? {
       label: "Сделка",

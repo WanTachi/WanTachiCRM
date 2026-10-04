@@ -14,6 +14,128 @@ import type {
 
 type ServerSupabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
+export async function getActiveContactForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  contactId: string,
+): Promise<CrmResult<CrmContact | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_contacts")
+      .select("id, first_name, last_name, email, phone, job_title, account_id, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("id", contactId)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить контакт." } };
+    return { ok: true, value: data as CrmContact | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить контакт." } };
+  }
+}
+
+export async function listDealsForContact(
+  supabase: ServerSupabase,
+  organizationId: string,
+  contactId: string,
+): Promise<CrmResult<CrmDeal[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deals")
+      .select("id, pipeline_id, stage_id, account_id, contact_id, name, description, amount, currency, owner_user_id, expected_close_date, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .is("archived_at", null)
+      .order("created_at", { ascending: false });
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки контакта." } };
+    return { ok: true, value: (data ?? []) as CrmDeal[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки контакта." } };
+  }
+}
+
+export async function listTasksForContact(
+  supabase: ServerSupabase,
+  organizationId: string,
+  contactId: string,
+): Promise<CrmResult<CrmTask[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_tasks")
+      .select("id, title, description, status, priority, due_at, owner_user_id, account_id, contact_id, deal_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .is("archived_at", null)
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: false });
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи контакта." } };
+    return { ok: true, value: (data ?? []) as CrmTask[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачи контакта." } };
+  }
+}
+
+export async function listActivitiesForContact(
+  supabase: ServerSupabase,
+  organizationId: string,
+  contactId: string,
+): Promise<CrmResult<CrmActivity[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_activities")
+      .select("id, type, subject, body, occurred_at, account_id, contact_id, deal_id, task_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("contact_id", contactId)
+      .is("archived_at", null)
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности контакта." } };
+    return { ok: true, value: (data ?? []) as CrmActivity[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности контакта." } };
+  }
+}
+
+/** Resolve only references present in the already tenant-scoped Contact timeline, in batches. */
+export async function getContactActivityReferencesForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  activities: CrmActivity[],
+  permissions: ReadonlySet<string>,
+): Promise<CrmResult<{
+  accountNames: Map<string, string>;
+  dealNames: Map<string, string>;
+  taskNames: Map<string, string>;
+}>> {
+  const sources = [
+    { table: "crm_accounts", key: "account_id", permission: "accounts.read", column: "name" },
+    { table: "crm_deals", key: "deal_id", permission: "deals.read", column: "name" },
+    { table: "crm_tasks", key: "task_id", permission: "tasks.read", column: "title" },
+  ] as const;
+  try {
+    const [accountNames, dealNames, taskNames] = await Promise.all(sources.map(async (source) => {
+      const names = new Map<string, string>();
+      if (!permissions.has(source.permission)) return names;
+      const ids = [...new Set(activities.map((activity) => activity[source.key]).filter((id): id is string => Boolean(id)))];
+      if (ids.length === 0) return names;
+      const { data, error } = await supabase.from(source.table)
+        .select(`id, ${source.column}`)
+        .eq("organization_id", organizationId)
+        .in("id", ids)
+        .is("archived_at", null);
+      if (error) throw new Error("Unable to load activity references.");
+      for (const row of (data ?? []) as unknown as Array<{ id: string; name?: string; title?: string }>) {
+        const name = row[source.column];
+        if (name !== undefined) names.set(row.id, name);
+      }
+      return names;
+    }));
+    return { ok: true, value: { accountNames, dealNames, taskNames } };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить связи активностей контакта." } };
+  }
+}
+
 export async function listTasksForOrganization(
   supabase: ServerSupabase,
   organizationId: string,

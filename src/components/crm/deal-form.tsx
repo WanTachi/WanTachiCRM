@@ -27,6 +27,7 @@ export function DealForm({
   canReadAccounts,
   canReadContacts,
   defaultAccountId,
+  defaultContactId,
   action,
 }: {
   deal?: CrmDeal;
@@ -40,6 +41,7 @@ export function DealForm({
   canReadAccounts: boolean;
   canReadContacts: boolean;
   defaultAccountId?: string;
+  defaultContactId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -56,6 +58,8 @@ export function DealForm({
   const accountOptions = accounts;
   const contactOptions = contacts;
   const selectedAccountId = deal?.account_id ?? defaultAccountId ?? "";
+  const selectedContactId = deal ? deal.contact_id ?? "" : defaultContactId ?? "";
+  const initialContactId = contactOptions.some((item) => item.id === selectedContactId) ? selectedContactId : "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -121,7 +125,8 @@ export function DealForm({
         {canReadContacts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-contact`}>Контакт</label>
-            <select className="input crm-select" id={`${prefix}-contact`} name="contact_id" defaultValue={contactOptions.some((item) => item.id === deal?.contact_id) ? deal?.contact_id ?? "" : ""}>
+            {/* Reapply changed prefill without resetting user selection on ordinary rerenders. */}
+            <select key={initialContactId} className="input crm-select" id={`${prefix}-contact`} name="contact_id" defaultValue={initialContactId}>
               <option value="">Без контакта</option>
               {contactOptions.map((contact) => (
                 <option key={contact.id} value={contact.id}>

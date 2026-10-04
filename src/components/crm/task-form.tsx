@@ -24,6 +24,7 @@ export function TaskForm({
   canReadContacts,
   canReadDeals,
   defaultAccountId,
+  defaultContactId,
   action,
 }: {
   task?: CrmTask;
@@ -37,6 +38,7 @@ export function TaskForm({
   canReadContacts: boolean;
   canReadDeals: boolean;
   defaultAccountId?: string;
+  defaultContactId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -44,6 +46,8 @@ export function TaskForm({
   const ownerIds = new Set(members.map((member) => member.user_id));
   ownerIds.add(currentUserId);
   const selectedAccountId = task?.account_id ?? defaultAccountId ?? "";
+  const selectedContactId = task ? task.contact_id ?? "" : defaultContactId ?? "";
+  const initialContactId = contacts.some((item) => item.id === selectedContactId) ? selectedContactId : "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -105,7 +109,8 @@ export function TaskForm({
         {canReadContacts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-contact`}>Контакт</label>
-            <select className="input crm-select" id={`${prefix}-contact`} name="contact_id" defaultValue={contacts.some((item) => item.id === task?.contact_id) ? task?.contact_id ?? "" : ""}>
+            {/* Reapply changed prefill without resetting user selection on ordinary rerenders. */}
+            <select key={initialContactId} className="input crm-select" id={`${prefix}-contact`} name="contact_id" defaultValue={initialContactId}>
               <option value="">Без контакта</option>
               {contacts.map((contact) => <option key={contact.id} value={contact.id}>{[contact.first_name, contact.last_name].filter(Boolean).join(" ")}</option>)}
             </select>

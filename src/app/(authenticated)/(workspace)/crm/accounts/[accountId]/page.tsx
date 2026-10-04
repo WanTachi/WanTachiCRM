@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { PageContainer } from "@/components/layout/page-container";
 import { CrmPageNotice } from "@/components/crm/crm-page-notice";
 import { ActivityTimeline } from "@/components/crm/activity-timeline";
+import { RelatedDealRecords, RelatedTaskRecords } from "@/components/crm/related-records";
 import { ContactForm } from "@/components/crm/contact-form";
 import { DealForm } from "@/components/crm/deal-form";
 import { TaskForm } from "@/components/crm/task-form";
@@ -28,19 +29,6 @@ import { buildAccount360ActivityLinks } from "@/lib/crm/account-360";
 import type { CrmActivity, CrmContact, CrmDeal, CrmMemberOption, CrmPipeline, CrmPipelineStage, CrmTask } from "@/lib/crm/types";
 
 type AccountPageProps = { params: Promise<{ accountId: string }> };
-
-const taskStatusLabels: Record<CrmTask["status"], string> = {
-  open: "Открыта",
-  in_progress: "В работе",
-  completed: "Завершена",
-  cancelled: "Отменена",
-};
-const priorityLabels: Record<CrmTask["priority"], string> = {
-  low: "Низкий",
-  normal: "Обычный",
-  high: "Высокий",
-  urgent: "Срочный",
-};
 
 export default async function AccountDetailPage({ params }: AccountPageProps) {
   const access = await resolveCrmAccess();
@@ -133,19 +121,19 @@ export default async function AccountDetailPage({ params }: AccountPageProps) {
         </div>
         {contactsResult.value.length === 0 ? <EmptyText text="У аккаунта пока нет активных контактов." /> : (
           <div className="crm-record-list">
-            {contactsResult.value.map((contact) => <Card className="crm-record" key={contact.id}><div className="crm-record-main"><h3><Link className="crm-text-link" href={canManageContacts ? `/crm/contacts?edit=${contact.id}` : "/crm/contacts"}>{formatContactName(contact)}</Link></h3><div className="crm-record-details"><span>{contact.job_title || "Должность не указана"}</span><span>{contact.email || "Email не указан"}</span><span>{contact.phone || "Телефон не указан"}</span></div></div></Card>)}
+            {contactsResult.value.map((contact) => <Card className="crm-record" key={contact.id}><div className="crm-record-main"><h3><Link className="crm-text-link" href={`/crm/contacts/${contact.id}`}>{formatContactName(contact)}</Link></h3><div className="crm-record-details"><span>{contact.job_title || "Должность не указана"}</span><span>{contact.email || "Email не указан"}</span><span>{contact.phone || "Телефон не указан"}</span></div></div></Card>)}
           </div>
         )}
       </section> : null}
 
       {canReadDeals ? <section className="crm-section" aria-labelledby="account-deals-heading">
         <div className="crm-list-heading"><div><h2 className="section-heading" id="account-deals-heading">Сделки</h2><p className="section-description">Активные возможности аккаунта</p></div><span className="crm-list-meta">{dealsResult.value.length}</span></div>
-        {dealsResult.value.length === 0 ? <EmptyText text="У аккаунта пока нет активных сделок." /> : <div className="crm-record-list">{dealsResult.value.map((deal) => <Card className="crm-record" key={deal.id}><div className="crm-record-main"><h3><Link className="crm-text-link" href={canManageDeals ? `/crm/deals?edit=${deal.id}` : "/crm/deals"}>{deal.name}</Link></h3><div className="crm-record-details"><span>{formatAmount(deal.amount, deal.currency)}</span><span>{pipelineNames.get(deal.pipeline_id) || "Воронка недоступна"} / {stageNames.get(deal.stage_id) || "Этап недоступен"}</span><span>Закрытие: {deal.expected_close_date ? formatDate(deal.expected_close_date) : "не указано"}</span><span>Владелец: {formatOwner(deal.owner_user_id, userId)}</span></div></div></Card>)}</div>}
+        {dealsResult.value.length === 0 ? <EmptyText text="У аккаунта пока нет активных сделок." /> : <RelatedDealRecords deals={dealsResult.value} pipelineNames={pipelineNames} stageNames={stageNames} canManage={canManageDeals} userId={userId} />}
       </section> : null}
 
       {canReadTasks ? <section className="crm-section" aria-labelledby="account-tasks-heading">
         <div className="crm-list-heading"><div><h2 className="section-heading" id="account-tasks-heading">Задачи</h2><p className="section-description">Следующие шаги команды</p></div><span className="crm-list-meta">{tasksResult.value.length}</span></div>
-        {tasksResult.value.length === 0 ? <EmptyText text="У аккаунта пока нет активных задач." /> : <div className="crm-record-list">{tasksResult.value.map((task) => <Card className="crm-record" key={task.id}><div className="crm-record-main"><h3><Link className="crm-text-link" href={canManageTasks ? `/crm/tasks?edit=${task.id}` : "/crm/tasks"}>{task.title}</Link></h3><div className="crm-record-details"><span className={`badge badge--status-${task.status}`}>{taskStatusLabels[task.status]}</span><span className={`badge badge--priority-${task.priority}`}>{priorityLabels[task.priority]}</span><span>Срок: {task.due_at ? formatDate(task.due_at) : "не указан"}</span><span>Ответственный: {formatOwner(task.owner_user_id, userId)}</span></div>{task.description ? <p className="crm-record-body">{task.description}</p> : null}</div></Card>)}</div>}
+        {tasksResult.value.length === 0 ? <EmptyText text="У аккаунта пока нет активных задач." /> : <RelatedTaskRecords tasks={tasksResult.value} canManage={canManageTasks} userId={userId} />}
       </section> : null}
 
       {canReadActivities ? <section className="crm-section" aria-labelledby="account-activity-heading"><div className="crm-list-heading"><div><h2 className="section-heading" id="account-activity-heading">История взаимодействий</h2><p className="section-description">Хронология активностей по аккаунту</p></div><span className="crm-list-meta">{activitiesResult.value.length}</span></div><ActivityTimeline activities={activitiesResult.value} getLinks={(activity) => buildAccount360ActivityLinks(activity, { contactNames, dealNames, taskNames, canReadContacts, canReadDeals, canReadTasks, canManageContacts, canManageDeals, canManageTasks })} /></section> : null}
@@ -172,14 +160,4 @@ function formatContactName(contact: CrmContact): string {
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("ru-RU", { timeZone: "UTC" });
-}
-
-function formatAmount(amount: CrmDeal["amount"], currency: string | null): string {
-  if (amount === null || amount === undefined || amount === "") return "Сумма не указана";
-  return `${amount} ${currency || ""}`.trim();
-}
-
-function formatOwner(ownerId: string | null, currentUserId: string): string {
-  if (!ownerId) return "не назначен";
-  return ownerId === currentUserId ? "Вы" : "участник команды";
 }

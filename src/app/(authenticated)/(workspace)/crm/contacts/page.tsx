@@ -128,7 +128,7 @@ export default async function ContactsPage({ searchParams }: ContactsPageProps) 
                 const fullName = [contact.first_name, contact.last_name].filter(Boolean).join(" ");
                 return (
                   <tr key={contact.id}>
-                    <td><span className="table-primary">{fullName}</span><span className="table-secondary">{contact.email || "Email не указан"}</span></td>
+                    <td><Link className="table-primary crm-text-link" href={`/crm/contacts/${contact.id}`}>{fullName}</Link><span className="table-secondary">{contact.email || "Email не указан"}</span></td>
                     <td>{contact.account_id ? accountNames.get(contact.account_id) ?? "Аккаунт связан" : <span className="table-secondary">Без аккаунта</span>}</td>
                     <td>{contact.job_title || <span className="table-secondary">—</span>}</td>
                     <td>{contact.phone || <span className="table-secondary">—</span>}</td>

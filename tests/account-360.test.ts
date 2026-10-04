@@ -32,7 +32,7 @@ describe("Account 360 helpers", () => {
     });
 
     expect(links).toEqual([
-      { label: "Контакт", value: "Анна Иванова", href: `/crm/contacts?edit=${activity.contact_id}` },
+      { label: "Контакт", value: "Анна Иванова", href: `/crm/contacts/${activity.contact_id}` },
       { label: "Сделка", value: "Продление", href: undefined },
       { label: "Задача", value: "Позвонить", href: "/crm/tasks" },
     ]);
@@ -50,5 +50,16 @@ describe("Account 360 helpers", () => {
       canManageDeals: false,
       canManageTasks: false,
     })).toEqual([]);
+  });
+
+  it("links read-only contacts to Contact 360 and suppresses unavailable contact links", () => {
+    const references = {
+      contactNames: new Map([[activity.contact_id!, "Анна"]]), dealNames: new Map(), taskNames: new Map(),
+      canReadContacts: true, canReadDeals: false, canReadTasks: false,
+      canManageContacts: false, canManageDeals: false, canManageTasks: false,
+    };
+    expect(buildAccount360ActivityLinks(activity, references)[0].href).toBe(`/crm/contacts/${activity.contact_id}`);
+    expect(buildAccount360ActivityLinks(activity, { ...references, canReadContacts: false })[0].href).toBeUndefined();
+    expect(buildAccount360ActivityLinks(activity, { ...references, contactNames: new Map() })[0].href).toBeUndefined();
   });
 });

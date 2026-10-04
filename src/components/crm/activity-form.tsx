@@ -15,6 +15,7 @@ export function ActivityForm({
   canReadDeals,
   canReadTasks,
   defaultAccountId,
+  defaultContactId,
   action,
 }: {
   accounts: CrmAccount[];
@@ -26,9 +27,11 @@ export function ActivityForm({
   canReadDeals: boolean;
   canReadTasks: boolean;
   defaultAccountId?: string;
+  defaultContactId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
+  const initialContactId = contacts.some((item) => item.id === defaultContactId) ? defaultContactId : "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -68,7 +71,8 @@ export function ActivityForm({
         {canReadContacts ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor="new-activity-contact">Контакт</label>
-            <select className="input crm-select" id="new-activity-contact" name="contact_id" defaultValue="">
+            {/* Reapply changed prefill without resetting user selection on ordinary rerenders. */}
+            <select key={initialContactId} className="input crm-select" id="new-activity-contact" name="contact_id" defaultValue={initialContactId}>
               <option value="">Без контакта</option>
               {contacts.map((contact) => <option key={contact.id} value={contact.id}>{[contact.first_name, contact.last_name].filter(Boolean).join(" ")}</option>)}
             </select>
