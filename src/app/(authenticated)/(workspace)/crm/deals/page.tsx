@@ -182,7 +182,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
                   </header>
                   {column.deals.map((deal) => (
                     <Card className="deal-card" key={deal.id}>
-                      <Link className="deal-card-title" href={`/crm/deals?edit=${deal.id}`}>{deal.name}</Link>
+                      <Link className="deal-card-title" href={`/crm/deals/${deal.id}`}>{deal.name}</Link>
                       <div className="deal-card-meta">
                         <span>{formatAmount(deal.amount, deal.currency)}</span>
                         <span>{deal.expected_close_date ?? "Без срока"}</span>

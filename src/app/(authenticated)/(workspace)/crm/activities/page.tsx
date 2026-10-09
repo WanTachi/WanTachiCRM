@@ -13,6 +13,7 @@ import {
 import { permissionError, resolveCrmAccess } from "@/lib/crm/access";
 import { createActivityAction } from "@/app/actions/crm/activities";
 import type { CrmAccount, CrmActivity, CrmContact, CrmDeal, CrmTask } from "@/lib/crm/types";
+import { getReadableActivityLink } from "@/lib/crm/activity-links";
 
 const activityLabels: Record<CrmActivity["type"], string> = {
   note: "Заметка",
@@ -110,7 +111,7 @@ export default async function ActivitiesPage() {
                       <span>Событие: {formatOccurredAt(activity.occurred_at)}</span>
                       {activity.account_id ? <Association href={canReadAccounts ? `/crm/accounts/${activity.account_id}` : undefined} label="Аккаунт" value={accountNames.get(activity.account_id) ?? "недоступен или архивирован"} /> : null}
                       {activity.contact_id ? <Association href={canReadContacts ? `/crm/contacts?edit=${activity.contact_id}` : undefined} label="Контакт" value={contactNames.get(activity.contact_id) ?? "недоступен или архивирован"} /> : null}
-                      {activity.deal_id ? <Association href={canReadDeals ? `/crm/deals?edit=${activity.deal_id}` : undefined} label="Сделка" value={dealNames.get(activity.deal_id) ?? "недоступна или архивирована"} /> : null}
+                      {activity.deal_id ? <Association href={getReadableActivityLink("deals", activity.deal_id, dealNames, canReadDeals)?.href} label="Сделка" value={dealNames.get(activity.deal_id) ?? "недоступна или архивирована"} /> : null}
                       {activity.task_id ? <Association href={canReadTasks ? `/crm/tasks?edit=${activity.task_id}` : undefined} label="Задача" value={taskNames.get(activity.task_id) ?? "недоступна или архивирована"} /> : null}
                     </div>
                     {activity.body ? <p className="crm-record-body">{activity.body}</p> : null}

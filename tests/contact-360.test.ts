@@ -3,7 +3,7 @@ import { buildContact360ActivityLinks, getContactAccount } from "../src/lib/crm/
 import { getReadableActivityLink } from "../src/lib/crm/activity-links";
 import {
   getActiveContactForOrganization,
-  getContactActivityReferencesForOrganization,
+  getActivityReferencesForOrganization,
   listActivitiesForContact,
   listDealsForContact,
   listTasksForContact,
@@ -57,7 +57,7 @@ describe("Contact 360 related model", () => {
   it("links readable accounts to Account 360 and uses supported deal/task destinations", () => {
     expect(buildContact360ActivityLinks(activity, references)).toEqual([
       { label: "Аккаунт", value: "Компания", href: `/crm/accounts/${accountId}` },
-      { label: "Сделка", value: "Продление", href: `/crm/deals?edit=${dealId}` },
+      { label: "Сделка", value: "Продление", href: `/crm/deals/${dealId}` },
       { label: "Задача", value: "Позвонить", href: "/crm/tasks" },
     ]);
   });
@@ -131,7 +131,7 @@ describe("Contact 360 query boundaries (mocked; not RLS tests)", () => {
 
   it("batches permitted timeline references and deduplicates IDs", async () => {
     const mock = mockSupabase([{ id: accountId, name: "Компания" }]);
-    const result = await getContactActivityReferencesForOrganization(
+    const result = await getActivityReferencesForOrganization(
       mock.supabase, "active-organization", [activity, activity], new Set(["accounts.read"]),
     );
     expect(mock.from.mock.calls).toEqual([["crm_accounts"]]);
@@ -139,14 +139,14 @@ describe("Contact 360 query boundaries (mocked; not RLS tests)", () => {
     expect(mock.query.eq).toHaveBeenCalledWith("organization_id", "active-organization");
     expect(mock.query.is).toHaveBeenCalledWith("archived_at", null);
     expect(result).toEqual({ ok: true, value: {
-      accountNames: new Map([[accountId, "Компания"]]), dealNames: new Map(), taskNames: new Map(),
+      accountNames: new Map([[accountId, "Компания"]]), contactNames: new Map(), dealNames: new Map(), taskNames: new Map(),
     } });
   });
 
   it("does not query references without permission or without activity links", async () => {
     const mock = mockSupabase();
-    await getContactActivityReferencesForOrganization(mock.supabase, "active-organization", [activity], new Set());
-    await getContactActivityReferencesForOrganization(mock.supabase, "active-organization", [], new Set(["accounts.read", "deals.read", "tasks.read"]));
+    await getActivityReferencesForOrganization(mock.supabase, "active-organization", [activity], new Set());
+    await getActivityReferencesForOrganization(mock.supabase, "active-organization", [], new Set(["accounts.read", "contacts.read", "deals.read", "tasks.read"]));
     expect(mock.from).not.toHaveBeenCalled();
   });
 });

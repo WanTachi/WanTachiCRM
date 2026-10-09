@@ -86,6 +86,7 @@ async function validateDealReferences(
 
 function revalidateDealViews(pipelineId?: string) {
   revalidatePath("/crm/deals");
+  revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/pipelines");

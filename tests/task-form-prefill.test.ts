@@ -47,6 +47,21 @@ function select(name: string, overrides: Partial<Props> = {}): Select {
 }
 
 describe("TaskForm contact prefill", () => {
+  it("prefills Deal 360 relationships without changing existing Account/Contact create defaults", () => {
+    const defaults = { defaultAccountId: accountId, defaultContactId: contactId, defaultDealId: dealId };
+    expect(select("deal_id", defaults).props.defaultValue).toBe(dealId);
+    expect(select("account_id", defaults).props.defaultValue).toBe(accountId);
+    expect(select("contact_id", defaults).props.defaultValue).toBe(contactId);
+    expect(select("deal_id").props.defaultValue).toBe("");
+    expect(select("deal_id", { defaultDealId: dealId, deals: [] }).props.defaultValue).toBe("");
+  });
+
+  it("updates deal prefill only when its effective default changes", () => {
+    const prefilled = select("deal_id", { defaultDealId: dealId });
+    expect(prefilled.key).not.toBe(select("deal_id").key);
+    expect(prefilled.key).toBe(select("deal_id", { defaultDealId: dealId, deals: props.deals.map((deal) => ({ ...deal })) }).key);
+  });
+
   it("prefills the Contact 360 account and contact", () => {
     const defaults = { defaultAccountId: accountId, defaultContactId: contactId };
     expect(select("account_id", defaults).props.defaultValue).toBe(accountId);
@@ -83,5 +98,7 @@ describe("TaskForm contact prefill", () => {
     };
     expect(select("contact_id", { task, defaultContactId: secondContactId }).props.defaultValue).toBe(contactId);
     expect(select("contact_id", { task: { ...task, contact_id: null }, defaultContactId: contactId }).props.defaultValue).toBe("");
+    expect(select("deal_id", { task, defaultDealId: secondContactId }).props.defaultValue).toBe(dealId);
+    expect(select("deal_id", { task: { ...task, deal_id: null }, defaultDealId: dealId }).props.defaultValue).toBe("");
   });
 });

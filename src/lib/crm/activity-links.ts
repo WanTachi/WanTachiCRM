@@ -12,7 +12,7 @@ export function getReadableActivityLink(
   const value = names.get(id);
   if (value === undefined) return null;
   const labels = { accounts: "Аккаунт", contacts: "Контакт", deals: "Сделка", tasks: "Задача" };
-  const href = entity === "accounts" || entity === "contacts"
+  const href = entity === "accounts" || entity === "contacts" || entity === "deals"
     ? `/crm/${entity}/${id}`
     : canManage ? `/crm/${entity}?edit=${id}` : `/crm/${entity}`;
   return { label: labels[entity], value, href };

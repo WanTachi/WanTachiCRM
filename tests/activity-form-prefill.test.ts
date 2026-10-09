@@ -14,6 +14,7 @@ type Select = ReactElement<SelectHTMLAttributes<HTMLSelectElement>>;
 const accountId = "a3000000-0000-4000-8000-000000000001";
 const contactId = "a4000000-0000-4000-8000-000000000001";
 const secondContactId = "a4000000-0000-4000-8000-000000000002";
+const dealId = "a5000000-0000-4000-8000-000000000001";
 const timestamps = { created_at: "2026-10-01T12:00:00Z", updated_at: "2026-10-01T12:00:00Z" };
 const props: Props = {
   accounts: [{ id: accountId, name: "Test Company", website: null, phone: null, industry: null, ...timestamps }],
@@ -21,7 +22,11 @@ const props: Props = {
     id: contactId, first_name: "Ванек", last_name: "Кириешкин", email: null, phone: null,
     job_title: null, account_id: accountId, ...timestamps,
   }],
-  deals: [], tasks: [], canReadAccounts: true, canReadContacts: true,
+  deals: [{
+    id: dealId, name: "Продление", description: null, pipeline_id: "a6000000-0000-4000-8000-000000000001",
+    stage_id: "a7000000-0000-4000-8000-000000000001", account_id: accountId, contact_id: contactId,
+    amount: null, currency: null, expected_close_date: null, owner_user_id: null, ...timestamps,
+  }], tasks: [], canReadAccounts: true, canReadContacts: true,
   canReadDeals: true, canReadTasks: true, action: async () => ({}),
 };
 
@@ -40,6 +45,21 @@ function select(name: string, overrides: Partial<Props> = {}): Select {
 }
 
 describe("ActivityForm contact prefill", () => {
+  it("prefills Deal 360 relationships and ignores unavailable deal defaults", () => {
+    const defaults = { defaultAccountId: accountId, defaultContactId: contactId, defaultDealId: dealId };
+    expect(select("deal_id", defaults).props.defaultValue).toBe(dealId);
+    expect(select("account_id", defaults).props.defaultValue).toBe(accountId);
+    expect(select("contact_id", defaults).props.defaultValue).toBe(contactId);
+    expect(select("deal_id").props.defaultValue).toBe("");
+    expect(select("deal_id", { defaultDealId: dealId, deals: [] }).props.defaultValue).toBe("");
+  });
+
+  it("updates deal prefill only when its effective default changes", () => {
+    const prefilled = select("deal_id", { defaultDealId: dealId });
+    expect(prefilled.key).not.toBe(select("deal_id").key);
+    expect(prefilled.key).toBe(select("deal_id", { defaultDealId: dealId, deals: props.deals.map((deal) => ({ ...deal })) }).key);
+  });
+
   it("prefills the Contact 360 account and contact", () => {
     const defaults = { defaultAccountId: accountId, defaultContactId: contactId };
     expect(select("account_id", defaults).props.defaultValue).toBe(accountId);

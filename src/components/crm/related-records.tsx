@@ -28,7 +28,10 @@ export function RelatedDealRecords({ deals, pipelineNames, stageNames, canManage
   return <div className="crm-record-list">{deals.map((deal) => (
     <Card className="crm-record" key={deal.id}>
       <div className="crm-record-main">
-        <h3><Link className="crm-text-link" href={canManage ? `/crm/deals?edit=${deal.id}` : "/crm/deals"}>{deal.name}</Link></h3>
+        <div className="crm-title-row">
+          <h3><a className="crm-text-link" href={`/crm/deals/${deal.id}`}>{deal.name}</a></h3>
+          {canManage ? <Link className="crm-text-link" href={`/crm/deals?edit=${deal.id}`}>Изменить</Link> : null}
+        </div>
         <div className="crm-record-details">
           <span>{deal.amount === null || deal.amount === "" ? "Сумма не указана" : `${deal.amount} ${deal.currency || ""}`.trim()}</span>
           <span>{pipelineNames.get(deal.pipeline_id) || "Воронка недоступна"} / {stageNames.get(deal.stage_id) || "Этап недоступен"}</span>

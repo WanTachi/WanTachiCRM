@@ -15,7 +15,7 @@ import { notFoundError, permissionError, resolveCrmAccess } from "@/lib/crm/acce
 import {
   getActiveAccountForOrganization,
   getActiveContactForOrganization,
-  getContactActivityReferencesForOrganization,
+  getActivityReferencesForOrganization,
   listActivitiesForContact,
   listActiveStagesForOrganization,
   listAssignableMembersForOrganization,
@@ -78,7 +78,7 @@ export default async function ContactDetailPage({ params }: ContactPageProps) {
   if (!stagesResult.ok) return <CrmPageNotice title="Не удалось загрузить этапы" message={stagesResult.error.message} />;
   if (!membersResult.ok) return <CrmPageNotice title="Не удалось загрузить участников" message={membersResult.error.message} />;
 
-  const referencesResult = await getContactActivityReferencesForOrganization(
+  const referencesResult = await getActivityReferencesForOrganization(
     supabase, organizationId, activitiesResult.value, permissions,
   );
   if (!referencesResult.ok) return <CrmPageNotice title="Не удалось загрузить связи активностей" message={referencesResult.error.message} />;

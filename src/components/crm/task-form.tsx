@@ -25,6 +25,7 @@ export function TaskForm({
   canReadDeals,
   defaultAccountId,
   defaultContactId,
+  defaultDealId,
   action,
 }: {
   task?: CrmTask;
@@ -39,6 +40,7 @@ export function TaskForm({
   canReadDeals: boolean;
   defaultAccountId?: string;
   defaultContactId?: string;
+  defaultDealId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -48,6 +50,8 @@ export function TaskForm({
   const selectedAccountId = task?.account_id ?? defaultAccountId ?? "";
   const selectedContactId = task ? task.contact_id ?? "" : defaultContactId ?? "";
   const initialContactId = contacts.some((item) => item.id === selectedContactId) ? selectedContactId : "";
+  const selectedDealId = task ? task.deal_id ?? "" : defaultDealId ?? "";
+  const initialDealId = deals.some((item) => item.id === selectedDealId) ? selectedDealId : "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -119,7 +123,7 @@ export function TaskForm({
         {canReadDeals ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor={`${prefix}-deal`}>Сделка</label>
-            <select className="input crm-select" id={`${prefix}-deal`} name="deal_id" defaultValue={deals.some((item) => item.id === task?.deal_id) ? task?.deal_id ?? "" : ""}>
+            <select key={initialDealId} className="input crm-select" id={`${prefix}-deal`} name="deal_id" defaultValue={initialDealId}>
               <option value="">Без сделки</option>
               {deals.map((deal) => <option key={deal.id} value={deal.id}>{deal.name}</option>)}
             </select>

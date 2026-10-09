@@ -18,6 +18,17 @@ const activity: CrmActivity = {
 };
 
 describe("Account 360 helpers", () => {
+  it("links available deals to Deal 360 for read-only users and hides unavailable deal links", () => {
+    const references = {
+      contactNames: new Map(), dealNames: new Map([[activity.deal_id!, "Продление"]]), taskNames: new Map(),
+      canReadContacts: false, canReadDeals: true, canReadTasks: false,
+      canManageContacts: false, canManageDeals: false, canManageTasks: false,
+    };
+    expect(buildAccount360ActivityLinks(activity, references)[1].href).toBe(`/crm/deals/${activity.deal_id}`);
+    expect(buildAccount360ActivityLinks(activity, { ...references, canReadDeals: false })[1].href).toBeUndefined();
+    expect(buildAccount360ActivityLinks(activity, { ...references, dealNames: new Map() })[1].href).toBeUndefined();
+  });
+
   it("builds only permitted links for activity references", () => {
     const links = buildAccount360ActivityLinks(activity, {
       contactNames: new Map([[activity.contact_id!, "Анна Иванова"]]),

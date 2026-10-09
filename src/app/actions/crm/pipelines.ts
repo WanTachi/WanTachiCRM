@@ -17,6 +17,7 @@ import type { CrmFormState } from "@/lib/crm/types";
 function revalidatePipelineViews(pipelineId?: string) {
   revalidatePath("/crm/pipelines");
   revalidatePath("/crm/deals");
+  revalidatePath("/crm/deals/[dealId]", "page");
   if (pipelineId) revalidatePath(`/crm/pipelines/${pipelineId}`);
 }
 

@@ -30,7 +30,7 @@ export function buildAccount360ActivityLinks(
     activity.deal_id ? {
       label: "Сделка",
       value: references.dealNames.get(activity.deal_id) ?? "недоступна или архивирована",
-      href: references.canReadDeals ? (references.canManageDeals ? `/crm/deals?edit=${activity.deal_id}` : "/crm/deals") : undefined,
+      href: getReadableActivityLink("deals", activity.deal_id, references.dealNames, references.canReadDeals)?.href,
     } : null,
     activity.task_id ? {
       label: "Задача",
