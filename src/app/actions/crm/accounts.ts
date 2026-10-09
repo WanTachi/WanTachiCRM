@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateDashboard } from "@/lib/crm/dashboard";
 import { permissionError, resolveCrmAccess, unavailableError, notFoundError } from "@/lib/crm/access";
 import { archiveAccountForOrganization, listAccountsForOrganization } from "@/lib/crm/queries";
 import { invalidRecordIdError, isCrmRecordId, validateAccountForm } from "@/lib/crm/validation";
@@ -45,6 +46,7 @@ export async function createAccountAction(
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/contacts");
+  revalidateDashboard();
   return { success: "Аккаунт создан." };
 }
 
@@ -88,6 +90,7 @@ export async function updateAccountAction(
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/contacts");
+  revalidateDashboard();
   return { success: "Изменения аккаунта сохранены." };
 }
 
@@ -120,5 +123,6 @@ export async function archiveAccountAction(
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/contacts");
+  revalidateDashboard();
   return { success: "Аккаунт архивирован." };
 }

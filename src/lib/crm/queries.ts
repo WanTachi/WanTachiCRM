@@ -9,6 +9,7 @@ import type {
   CrmPipeline,
   CrmPipelineStage,
   CrmPipelineWithStageCount,
+  CrmDashboardDeal,
   CrmResult,
 } from "@/lib/crm/types";
 
@@ -413,6 +414,91 @@ export async function listDealsForOrganization(
     return { ok: true, value: (data ?? []) as CrmDeal[] };
   } catch {
     return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделки." } };
+  }
+}
+
+export async function listDashboardDealsForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<CrmDashboardDeal[]>> {
+  try {
+    const pageSize = 500;
+    const deals: CrmDashboardDeal[] = [];
+    let offset = 0;
+    let total = 0;
+
+    while (true) {
+      const { data, error, count } = await supabase
+        .from("crm_deals")
+        .select("id, amount, currency, created_at", { count: "exact" })
+        .eq("organization_id", organizationId)
+        .is("archived_at", null)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(offset, offset + pageSize - 1);
+
+      if (error || count === null || count === undefined) {
+        return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику сделок." } };
+      }
+
+      const page = (data ?? []) as CrmDashboardDeal[];
+      deals.push(...page);
+      total = count;
+      if (deals.length >= total) break;
+      if (page.length === 0) {
+        return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику сделок." } };
+      }
+      offset += page.length;
+    }
+
+    return { ok: true, value: deals };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику сделок." } };
+  }
+}
+
+export async function countDashboardAccountsForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<CrmResult<number>> {
+  try {
+    const { count, error } = await supabase
+      .from("crm_accounts")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .is("archived_at", null)
+      .gte("created_at", periodStart)
+      .lt("created_at", periodEnd);
+
+    if (error || count === null || count === undefined) {
+      return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику аккаунтов." } };
+    }
+    return { ok: true, value: count };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику аккаунтов." } };
+  }
+}
+
+export async function countCompletedTasksForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+): Promise<CrmResult<number>> {
+  try {
+    const { count, error } = await supabase
+      .from("crm_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("status", "completed")
+      .is("archived_at", null);
+
+    if (error || count === null || count === undefined) {
+      return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику задач." } };
+    }
+    return { ok: true, value: count };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить аналитику задач." } };
   }
 }
 

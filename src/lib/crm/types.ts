@@ -80,6 +80,8 @@ export type CrmDeal = {
   updated_at: string;
 };
 
+export type CrmDashboardDeal = Pick<CrmDeal, "amount" | "currency" | "created_at">;
+
 export type CrmTaskStatus = "open" | "in_progress" | "completed" | "cancelled";
 export type CrmTaskPriority = "low" | "normal" | "high" | "urgent";
 export type CrmActivityType = "note" | "call" | "meeting" | "email" | "other";

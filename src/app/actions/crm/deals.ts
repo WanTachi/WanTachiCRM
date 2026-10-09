@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateDashboard } from "@/lib/crm/dashboard";
 import { notFoundError, permissionError, resolveCrmAccess, unavailableError } from "@/lib/crm/access";
 import {
   getActivePipelineForOrganization,
@@ -85,6 +86,7 @@ async function validateDealReferences(
 }
 
 function revalidateDealViews(pipelineId?: string) {
+  revalidateDashboard();
   revalidatePath("/crm/deals");
   revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");

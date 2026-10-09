@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateDashboard } from "@/lib/crm/dashboard";
 import { isActiveOrganizationMember, listTasksForOrganization } from "@/lib/crm/queries";
 import { notFoundError, permissionError, resolveCrmAccess, unavailableError } from "@/lib/crm/access";
 import { invalidRecordIdError, isCrmRecordId, validateTaskForm } from "@/lib/crm/validation";
@@ -119,6 +120,7 @@ export async function createTaskAction(
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/activities");
+  revalidateDashboard();
   return { success: "Задача создана." };
 }
 
@@ -177,5 +179,6 @@ export async function updateTaskAction(
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   revalidatePath("/crm/activities");
+  revalidateDashboard();
   return { success: "Изменения задачи сохранены." };
 }
