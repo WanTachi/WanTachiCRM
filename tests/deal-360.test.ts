@@ -57,7 +57,7 @@ describe("Deal 360 relationships", () => {
       { label: "Аккаунт", value: "Компания", href: `/crm/accounts/${accountId}` },
       { label: "Контакт", value: "Анна Иванова", href: `/crm/contacts/${contactId}` },
       { label: "Сделка", value: "Продление", href: `/crm/deals/${dealId}` },
-      { label: "Задача", value: "Позвонить", href: "/crm/tasks" },
+      { label: "Задача", value: "Позвонить", href: `/crm/tasks/${taskId}` },
     ]);
   });
 

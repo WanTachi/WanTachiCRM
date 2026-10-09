@@ -17,6 +17,7 @@ export function ActivityForm({
   defaultAccountId,
   defaultContactId,
   defaultDealId,
+  defaultTaskId,
   action,
 }: {
   accounts: CrmAccount[];
@@ -30,11 +31,13 @@ export function ActivityForm({
   defaultAccountId?: string;
   defaultContactId?: string;
   defaultDealId?: string;
+  defaultTaskId?: string;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const initialContactId = contacts.some((item) => item.id === defaultContactId) ? defaultContactId : "";
   const initialDealId = deals.some((item) => item.id === defaultDealId) ? defaultDealId : "";
+  const initialTaskId = tasks.some((item) => item.id === defaultTaskId) ? defaultTaskId : "";
 
   return (
     <form action={formAction} className="crm-form">
@@ -93,7 +96,7 @@ export function ActivityForm({
         {canReadTasks ? (
           <div className="crm-field">
             <label className="auth-label" htmlFor="new-activity-task">Задача</label>
-            <select className="input crm-select" id="new-activity-task" name="task_id" defaultValue="">
+            <select key={initialTaskId} className="input crm-select" id="new-activity-task" name="task_id" defaultValue={initialTaskId}>
               <option value="">Без задачи</option>
               {tasks.map((task) => <option key={task.id} value={task.id}>{task.title}</option>)}
             </select>

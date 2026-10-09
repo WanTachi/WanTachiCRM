@@ -173,7 +173,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
                   {matchingTasks.map((task) => (
                     <tr key={task.id}>
                       <td><input className="task-checkbox" type="checkbox" checked={task.status === "completed"} disabled aria-label={`${task.title}: ${statusLabels[task.status]}`} title="Изменение статуса из списка пока недоступно" /></td>
-                      <td><span className="table-primary">{task.title}</span>{task.description ? <span className="table-secondary task-description">{task.description}</span> : null}</td>
+                      <td><a className="table-primary crm-text-link" href={`/crm/tasks/${task.id}`}>{task.title}</a>{task.description ? <span className="table-secondary task-description">{task.description}</span> : null}</td>
                       <td>{task.due_at ? new Date(task.due_at).toLocaleDateString("ru-RU", { timeZone: "UTC" }) : <span className="table-secondary">Без срока</span>}</td>
                       <td><span className={`badge badge--priority-${task.priority}`}>{priorityLabels[task.priority]}</span></td>
                       <td><span className={`badge badge--status-${task.status}`}>{statusLabels[task.status]}</span></td>

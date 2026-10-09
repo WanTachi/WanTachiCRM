@@ -114,6 +114,7 @@ export async function createTaskAction(
   }
 
   revalidatePath("/crm/tasks");
+  revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
@@ -171,6 +172,7 @@ export async function updateTaskAction(
   }
 
   revalidatePath("/crm/tasks");
+  revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");

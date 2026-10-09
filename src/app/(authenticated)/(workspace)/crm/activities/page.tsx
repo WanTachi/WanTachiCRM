@@ -112,7 +112,7 @@ export default async function ActivitiesPage() {
                       {activity.account_id ? <Association href={canReadAccounts ? `/crm/accounts/${activity.account_id}` : undefined} label="Аккаунт" value={accountNames.get(activity.account_id) ?? "недоступен или архивирован"} /> : null}
                       {activity.contact_id ? <Association href={canReadContacts ? `/crm/contacts?edit=${activity.contact_id}` : undefined} label="Контакт" value={contactNames.get(activity.contact_id) ?? "недоступен или архивирован"} /> : null}
                       {activity.deal_id ? <Association href={getReadableActivityLink("deals", activity.deal_id, dealNames, canReadDeals)?.href} label="Сделка" value={dealNames.get(activity.deal_id) ?? "недоступна или архивирована"} /> : null}
-                      {activity.task_id ? <Association href={canReadTasks ? `/crm/tasks?edit=${activity.task_id}` : undefined} label="Задача" value={taskNames.get(activity.task_id) ?? "недоступна или архивирована"} /> : null}
+                      {activity.task_id ? <Association href={getReadableActivityLink("tasks", activity.task_id, taskNames, canReadTasks)?.href} label="Задача" value={taskNames.get(activity.task_id) ?? "недоступна или архивирована"} /> : null}
                     </div>
                     {activity.body ? <p className="crm-record-body">{activity.body}</p> : null}
                   </div>

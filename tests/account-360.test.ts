@@ -45,7 +45,7 @@ describe("Account 360 helpers", () => {
     expect(links).toEqual([
       { label: "Контакт", value: "Анна Иванова", href: `/crm/contacts/${activity.contact_id}` },
       { label: "Сделка", value: "Продление", href: undefined },
-      { label: "Задача", value: "Позвонить", href: "/crm/tasks" },
+      { label: "Задача", value: "Позвонить", href: `/crm/tasks/${activity.task_id}` },
     ]);
   });
 

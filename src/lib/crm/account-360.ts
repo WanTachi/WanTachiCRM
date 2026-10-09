@@ -35,7 +35,7 @@ export function buildAccount360ActivityLinks(
     activity.task_id ? {
       label: "Задача",
       value: references.taskNames.get(activity.task_id) ?? "недоступна или архивирована",
-      href: references.canReadTasks ? (references.canManageTasks ? `/crm/tasks?edit=${activity.task_id}` : "/crm/tasks") : undefined,
+      href: getReadableActivityLink("tasks", activity.task_id, references.taskNames, references.canReadTasks)?.href,
     } : null,
   ];
   return links.filter((link): link is Account360ActivityLink => link !== null);

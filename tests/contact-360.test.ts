@@ -58,7 +58,7 @@ describe("Contact 360 related model", () => {
     expect(buildContact360ActivityLinks(activity, references)).toEqual([
       { label: "Аккаунт", value: "Компания", href: `/crm/accounts/${accountId}` },
       { label: "Сделка", value: "Продление", href: `/crm/deals/${dealId}` },
-      { label: "Задача", value: "Позвонить", href: "/crm/tasks" },
+      { label: "Задача", value: "Позвонить", href: `/crm/tasks/${taskId}` },
     ]);
   });
 

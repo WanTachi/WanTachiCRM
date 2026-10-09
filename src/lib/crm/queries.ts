@@ -96,6 +96,26 @@ export async function listActivitiesForContact(
   }
 }
 
+export async function getActiveTaskForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  taskId: string,
+): Promise<CrmResult<CrmTask | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_tasks")
+      .select("id, title, description, status, priority, due_at, owner_user_id, account_id, contact_id, deal_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("id", taskId)
+      .is("archived_at", null)
+      .maybeSingle();
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачу." } };
+    return { ok: true, value: data as CrmTask | null };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить задачу." } };
+  }
+}
+
 /** Resolve references from an already tenant-scoped timeline, with independent read permissions. */
 export async function getActivityReferencesForOrganization(
   supabase: ServerSupabase,
@@ -177,6 +197,26 @@ export async function listActivitiesForDeal(
     return { ok: true, value: (data ?? []) as CrmActivity[] };
   } catch {
     return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности сделки." } };
+  }
+}
+
+export async function listActivitiesForTask(
+  supabase: ServerSupabase,
+  organizationId: string,
+  taskId: string,
+): Promise<CrmResult<CrmActivity[]>> {
+  try {
+    const { data, error } = await supabase.from("crm_activities")
+      .select("id, type, subject, body, occurred_at, account_id, contact_id, deal_id, task_id, created_by, created_at, updated_at")
+      .eq("organization_id", organizationId)
+      .eq("task_id", taskId)
+      .is("archived_at", null)
+      .order("occurred_at", { ascending: false })
+      .order("created_at", { ascending: false });
+    if (error) return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности задачи." } };
+    return { ok: true, value: (data ?? []) as CrmActivity[] };
+  } catch {
+    return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить активности задачи." } };
   }
 }
 

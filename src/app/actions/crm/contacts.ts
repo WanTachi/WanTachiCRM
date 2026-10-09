@@ -74,6 +74,7 @@ export async function createContactAction(
   revalidatePath("/crm/contacts");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
+  revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   return { success: "Контакт создан." };
 }
@@ -147,6 +148,7 @@ export async function updateContactAction(
   revalidatePath("/crm/contacts");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
+  revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   return { success: "Изменения контакта сохранены." };
 }
@@ -186,6 +188,7 @@ export async function archiveContactAction(
   revalidatePath("/crm/contacts");
   revalidatePath("/crm/accounts/[accountId]", "page");
   revalidatePath("/crm/contacts/[contactId]", "page");
+  revalidatePath("/crm/tasks/[taskId]", "page");
   revalidatePath("/crm/deals/[dealId]", "page");
   return { success: "Контакт архивирован." };
 }

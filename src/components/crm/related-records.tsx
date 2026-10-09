@@ -51,7 +51,10 @@ export function RelatedTaskRecords({ tasks, canManage, userId }: {
   return <div className="crm-record-list">{tasks.map((task) => (
     <Card className="crm-record" key={task.id}>
       <div className="crm-record-main">
-        <h3><Link className="crm-text-link" href={canManage ? `/crm/tasks?edit=${task.id}` : "/crm/tasks"}>{task.title}</Link></h3>
+        <div className="crm-title-row">
+          <h3><a className="crm-text-link" href={`/crm/tasks/${task.id}`}>{task.title}</a></h3>
+          {canManage ? <Link className="crm-text-link" href={`/crm/tasks?edit=${task.id}`}>Изменить</Link> : null}
+        </div>
         <div className="crm-record-details">
           <span className={`badge badge--status-${task.status}`}>{statusLabels[task.status]}</span>
           <span className={`badge badge--priority-${task.priority}`}>{priorityLabels[task.priority]}</span>
