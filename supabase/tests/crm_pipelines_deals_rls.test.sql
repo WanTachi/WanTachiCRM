@@ -2,6 +2,39 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
+-- pgTAP 3.36 has no four-argument throws_like overload. Keep the
+-- SQLSTATE + message-pattern assertion transaction-local for these tests.
+create or replace function pg_temp.throws_like(
+  query text,
+  expected_code text,
+  expected_message_pattern text,
+  description text
+)
+returns text
+language plpgsql
+as $$
+declare
+  actual_code text;
+  actual_message text;
+begin
+  begin
+    execute query;
+    return extensions.ok(false, description) || E'\n' || extensions.diag('    no exception thrown');
+  exception when others then
+    get stacked diagnostics
+      actual_code = returned_sqlstate,
+      actual_message = message_text;
+    if actual_code = expected_code and actual_message like expected_message_pattern then
+      return extensions.ok(true, description);
+    end if;
+    return extensions.ok(false, description) || E'\n' || extensions.diag(
+      '      caught: ' || actual_code || ': ' || actual_message ||
+      E'\n      wanted: ' || expected_code || ': ' || expected_message_pattern
+    );
+  end;
+end;
+$$;
+
 select no_plan();
 
 insert into auth.users (
@@ -13,8 +46,10 @@ insert into auth.users (
   ('81000000-0000-4000-8000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pipeline-admin-a@example.test', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('81000000-0000-4000-8000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pipeline-member-a@example.test', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
-set local role authenticated;
 select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', true);
+-- Seed deterministic fixture IDs as the database owner. Authenticated grants
+-- intentionally do not include INSERT(id); production-like writes below use
+-- generated IDs and exercise the real column privileges.
 select lives_ok(
   $$select public.create_organization('Pipeline Tenant A', 'pipeline-tenant-a')$$,
   'Owner A can create an organization with Pipelines and Deals permissions'
@@ -78,7 +113,6 @@ select is(
   'New Member does not receive manage permissions'
 );
 
-set local role authenticated;
 select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', true);
 insert into public.crm_pipelines (id, organization_id, name, owner_user_id)
 select '82000000-0000-4000-8000-000000000001', id, 'Tenant A Sales', '81000000-0000-4000-8000-000000000001'
@@ -143,6 +177,7 @@ select
 from public.organizations as organization
 where organization.slug = 'pipeline-tenant-b';
 
+set local role authenticated;
 select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', true);
 select is((select count(*)::bigint from public.crm_pipelines where organization_id = (select id from public.organizations where slug = 'pipeline-tenant-a')), 2::bigint, 'Owner A can read its pipelines');
 select is((select count(*)::bigint from public.crm_pipeline_stages where organization_id = (select id from public.organizations where slug = 'pipeline-tenant-a')), 2::bigint, 'Owner A can read its stages');
@@ -236,7 +271,7 @@ select throws_ok(
 );
 
 reset role;
-select throws_like(
+select pg_temp.throws_like(
   $$delete from public.crm_pipelines where id = '82000000-0000-4000-8000-000000000001'$$,
   '23503', '%violates foreign key constraint%',
   'Deleting a pipeline with CRM stages or deals is rejected instead of cascading'
@@ -244,7 +279,7 @@ select throws_like(
 select is((select count(*)::bigint from public.crm_pipelines where id = '82000000-0000-4000-8000-000000000001'), 1::bigint, 'Rejected pipeline deletion leaves the pipeline intact');
 select is((select count(*)::bigint from public.crm_pipeline_stages where id = '83000000-0000-4000-8000-000000000001'), 1::bigint, 'Rejected pipeline deletion leaves its stage intact');
 select is((select count(*)::bigint from public.crm_deals where id = '86000000-0000-4000-8000-000000000001'), 1::bigint, 'Rejected pipeline deletion leaves its deal intact');
-select throws_like(
+select pg_temp.throws_like(
   $$delete from public.crm_pipeline_stages where id = '83000000-0000-4000-8000-000000000001'$$,
   '23503', '%violates foreign key constraint%',
   'Deleting a stage with CRM deals is rejected instead of cascading'
@@ -275,30 +310,26 @@ select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000004
 select is((select count(*)::bigint from public.crm_pipelines where id = '82000000-0000-4000-8000-000000000001'), 0::bigint, 'Read-only Member cannot see archived pipeline');
 select is((select count(*)::bigint from public.crm_pipeline_stages where id = '83000000-0000-4000-8000-000000000001'), 0::bigint, 'Read-only Member cannot see archived stage');
 select is((select count(*)::bigint from public.crm_deals where id = '86000000-0000-4000-8000-000000000001'), 0::bigint, 'Read-only Member cannot see archived deal');
-select is(
-  (with updated as (
-    update public.crm_pipelines set name = 'Member edit denied'
-    where id = '82000000-0000-4000-8000-000000000003' returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_pipelines set name = 'Member edit denied'
+    where id = '82000000-0000-4000-8000-000000000003'$$,
   'Member with pipelines.read only cannot update a pipeline'
 );
-select is(
-  (with updated as (
-    update public.crm_pipeline_stages set name = 'Member edit denied'
-    where id = '83000000-0000-4000-8000-000000000003' returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_pipeline_stages set name = 'Member edit denied'
+    where id = '83000000-0000-4000-8000-000000000003'$$,
   'Member with pipelines.read only cannot update a stage'
 );
-select is(
-  (with updated as (
-    update public.crm_deals set name = 'Member edit denied'
-    where id = '86000000-0000-4000-8000-000000000003' returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_deals set name = 'Member edit denied'
+    where id = '86000000-0000-4000-8000-000000000003'$$,
   'Member with deals.read only cannot update a deal'
 );
+select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000001', true);
+select is((select name from public.crm_pipelines where id = '82000000-0000-4000-8000-000000000003'), 'Tenant A Renewal', 'Read-only Member pipeline update is ignored');
+select is((select name from public.crm_pipeline_stages where id = '83000000-0000-4000-8000-000000000003'), 'Renewal', 'Read-only Member stage update is ignored');
+select is((select name from public.crm_deals where id = '86000000-0000-4000-8000-000000000003'), 'Tenant A Active Deal', 'Read-only Member deal update is ignored');
+select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000004', true);
 select throws_ok(
   $$insert into public.crm_pipelines (organization_id, name)
     values ((select id from public.organizations where slug = 'pipeline-tenant-a'), 'Member pipeline denied')$$,
@@ -317,18 +348,27 @@ select throws_ok(
 
 select set_config('request.jwt.claim.sub', '81000000-0000-4000-8000-000000000003', true);
 select lives_ok(
-  $$insert into public.crm_pipelines (id, organization_id, name)
-    values ('82000000-0000-4000-8000-000000000004', (select id from public.organizations where slug = 'pipeline-tenant-a'), 'Admin Pipeline')$$,
+  $$insert into public.crm_pipelines (organization_id, name)
+    values ((select id from public.organizations where slug = 'pipeline-tenant-a'), 'Admin Pipeline')$$,
   'Admin can manage pipelines'
 );
 select lives_ok(
-  $$insert into public.crm_pipeline_stages (id, organization_id, pipeline_id, name, position)
-    values ('83000000-0000-4000-8000-000000000004', (select id from public.organizations where slug = 'pipeline-tenant-a'), '82000000-0000-4000-8000-000000000004', 'Admin Stage', 0)$$,
+  $$insert into public.crm_pipeline_stages (organization_id, pipeline_id, name, position)
+    values (
+      (select id from public.organizations where slug = 'pipeline-tenant-a'),
+      (select id from public.crm_pipelines where organization_id = (select id from public.organizations where slug = 'pipeline-tenant-a') and name = 'Admin Pipeline'),
+      'Admin Stage', 0
+    )$$,
   'Admin can manage stages'
 );
 select lives_ok(
-  $$insert into public.crm_deals (id, organization_id, pipeline_id, stage_id, name)
-    values ('86000000-0000-4000-8000-000000000004', (select id from public.organizations where slug = 'pipeline-tenant-a'), '82000000-0000-4000-8000-000000000004', '83000000-0000-4000-8000-000000000004', 'Admin Deal')$$,
+  $$insert into public.crm_deals (organization_id, pipeline_id, stage_id, name)
+    values (
+      (select id from public.organizations where slug = 'pipeline-tenant-a'),
+      (select id from public.crm_pipelines where organization_id = (select id from public.organizations where slug = 'pipeline-tenant-a') and name = 'Admin Pipeline'),
+      (select id from public.crm_pipeline_stages where organization_id = (select id from public.organizations where slug = 'pipeline-tenant-a') and name = 'Admin Stage'),
+      'Admin Deal'
+    )$$,
   'Admin can manage deals'
 );
 

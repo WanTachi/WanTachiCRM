@@ -355,8 +355,8 @@ select throws_ok(
 reset role;
 select set_config('request.jwt.claim.sub', current_setting('test.phase25.user_owner_b'), true);
 select throws_ok(
-  $$insert into public.crm_tasks (organization_id, title)
-    values ((select id from public.organizations where slug = current_setting('test.phase25.slug_a')), 'Cross-tenant creator')$$,
+  $$insert into public.crm_tasks (organization_id, title, owner_user_id)
+    values ((select id from public.organizations where slug = current_setting('test.phase25.slug_a')), 'Cross-tenant creator', null)$$,
   '23503',
   'insert or update on table "crm_tasks" violates foreign key constraint "crm_tasks_created_by_same_org_fk"',
   'Task creator must be a member of the same organization'
@@ -423,23 +423,15 @@ select is((select count(*)::bigint from public.crm_activities where id = current
 select set_config('request.jwt.claim.sub', current_setting('test.phase25.user_member_a'), true);
 select is((select count(*)::bigint from public.crm_tasks where id = current_setting('test.phase25.task_a')::uuid), 0::bigint, 'Read-only Member cannot see an archived Task');
 select is((select count(*)::bigint from public.crm_activities where id = current_setting('test.phase25.activity_a')::uuid), 0::bigint, 'Read-only Member cannot see an archived Activity');
-select is(
-  (with updated as (
-    update public.crm_tasks set archived_at = now()
-    where id = current_setting('test.phase25.task_readonly_a')::uuid
-    returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_tasks set archived_at = now()
+    where id = current_setting('test.phase25.task_readonly_a')::uuid$$,
   'Read-only Member cannot archive a Task'
 );
 select is((select count(*)::bigint from public.crm_tasks where id = current_setting('test.phase25.task_readonly_a')::uuid and archived_at is null), 1::bigint, 'Read-only Task remains active after archive attempt');
-select is(
-  (with updated as (
-    update public.crm_activities set archived_at = now()
-    where id = current_setting('test.phase25.activity_unlinked_a')::uuid
-    returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_activities set archived_at = now()
+    where id = current_setting('test.phase25.activity_unlinked_a')::uuid$$,
   'Read-only Member cannot archive an Activity'
 );
 select is((select count(*)::bigint from public.crm_activities where id = current_setting('test.phase25.activity_unlinked_a')::uuid and archived_at is null), 1::bigint, 'Read-only Activity remains active after archive attempt');

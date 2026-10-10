@@ -2,6 +2,45 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
 
+-- The bundled pgTAP version exposes throws_like(sql, pattern, description)
+-- but not the four-argument SQLSTATE + message-pattern form used below.
+-- Keep this compatibility assertion temporary and transaction-local so the
+-- test validates both the error code and the relevant message fragment.
+SET LOCAL search_path = pg_temp, public, extensions;
+CREATE OR REPLACE FUNCTION pg_temp.throws_like(
+  query text,
+  expected_code text,
+  expected_message_pattern text,
+  description text
+)
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  actual_code text;
+  actual_message text;
+BEGIN
+  BEGIN
+    EXECUTE query;
+    RETURN extensions.ok(FALSE, description) || E'\n' ||
+      extensions.diag('    no exception thrown');
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS
+      actual_code = RETURNED_SQLSTATE,
+      actual_message = MESSAGE_TEXT;
+    IF actual_code = expected_code
+       AND actual_message LIKE expected_message_pattern THEN
+      RETURN extensions.ok(TRUE, description);
+    END IF;
+    RETURN extensions.ok(FALSE, description) || E'\n' ||
+      extensions.diag(
+        '      caught: ' || actual_code || ': ' || actual_message ||
+        E'\n      wanted: ' || expected_code || ': ' || expected_message_pattern
+      );
+  END;
+END;
+$$;
+
 SELECT no_plan();
 
 SELECT set_config('test.deal_outcomes.user_a', gen_random_uuid()::text, true);
@@ -327,7 +366,7 @@ SELECT ok(
   'Outcome history keeps NO ACTION for direct Deal deletion and defers the check for organization cleanup'
 );
 
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET amount = 'Infinity'::numeric, currency = 'USD', outcome = 'won'
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -335,7 +374,7 @@ SELECT throws_like(
   '%positive amount%',
   'Won Deal rejects positive Infinity'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET amount = '-Infinity'::numeric, currency = 'USD', outcome = 'won'
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -343,7 +382,7 @@ SELECT throws_like(
   '%positive amount%',
   'Won Deal rejects negative Infinity'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET amount = 'NaN'::numeric, currency = 'USD', outcome = 'won'
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -352,7 +391,7 @@ SELECT throws_like(
   'Won Deal rejects NaN'
 );
 
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET outcome = 'won'
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -409,7 +448,7 @@ SELECT is(
   'Outcome event derives its actor from auth.uid()'
 );
 
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET amount = 1400
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -417,7 +456,7 @@ SELECT throws_like(
   '%amount and currency are immutable%',
   'Won Deal amount cannot be changed directly'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET currency = 'EUR'
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -425,7 +464,7 @@ SELECT throws_like(
   '%amount and currency are immutable%',
   'Won Deal currency cannot be changed directly'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deals
     SET closed_at = now()
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -433,7 +472,7 @@ SELECT throws_like(
   '%permission denied for table crm_deals%',
   'Authenticated users cannot write closed_at directly'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -443,7 +482,7 @@ SELECT throws_like(
   '%permission denied for table crm_deal_outcome_events%',
   'Authenticated users cannot forge outcome history events'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$UPDATE public.crm_deal_outcome_events
     SET to_outcome = 'lost'
     WHERE deal_id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
@@ -451,7 +490,7 @@ SELECT throws_like(
   '%permission denied for table crm_deal_outcome_events%',
   'Authenticated users cannot mutate outcome history events'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$DELETE FROM public.crm_deal_outcome_events
     WHERE deal_id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
   '42501',
@@ -459,7 +498,8 @@ SELECT throws_like(
   'Authenticated users cannot delete outcome history events'
 );
 RESET ROLE;
-SELECT throws_like(
+SET CONSTRAINTS crm_deal_outcome_events_deal_same_org_fk IMMEDIATE;
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -469,7 +509,7 @@ SELECT throws_like(
   '%crm_deal_outcome_events_won_snapshot_check%',
   'Won outcome history cannot store a NULL currency snapshot'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -479,7 +519,7 @@ SELECT throws_like(
   '%crm_deal_outcome_events_won_snapshot_check%',
   'Won outcome history cannot store positive Infinity'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -489,7 +529,7 @@ SELECT throws_like(
   '%crm_deal_outcome_events_won_snapshot_check%',
   'Won outcome history cannot store negative Infinity'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -577,7 +617,7 @@ SELECT is(
   5::bigint,
   'Archiving does not erase outcome events'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$DELETE FROM public.crm_deals
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
   '42501',
@@ -596,18 +636,17 @@ SELECT is(
   0::bigint,
   'Read-only Member cannot see archived Deal history'
 );
-SELECT is(
-  (
-    WITH updated AS (
-      UPDATE public.crm_deals
-      SET outcome = 'open'
-      WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid
-      RETURNING id
-    )
-    SELECT count(*)::bigint FROM updated
-  ),
-  0::bigint,
+SELECT lives_ok(
+  $$UPDATE public.crm_deals
+    SET outcome = 'open'
+    WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
   'Read-only Member cannot change Deal outcome'
+);
+SELECT set_config('request.jwt.claim.sub', current_setting('test.deal_outcomes.admin_a'), true);
+SELECT is(
+  (SELECT outcome FROM public.crm_deals WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid),
+  'won',
+  'Read-only Member outcome update is ignored'
 );
 
 SELECT set_config('request.jwt.claim.sub', current_setting('test.deal_outcomes.user_b'), true);
@@ -629,7 +668,7 @@ SELECT is(
 );
 
 RESET ROLE;
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_b')::uuid,
@@ -639,7 +678,7 @@ SELECT throws_like(
   '%crm_deal_outcome_events_deal_same_org_fk%',
   'The outcome history FK rejects a mismatched tenant relationship'
 );
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$INSERT INTO public.crm_deal_outcome_events
     (organization_id, deal_id, from_outcome, to_outcome, changed_by, amount_snapshot, currency_snapshot)
     VALUES (current_setting('test.deal_outcomes.org_a')::uuid,
@@ -649,8 +688,7 @@ SELECT throws_like(
   '%crm_deal_outcome_events_actor_same_org_fk%',
   'The outcome history FK rejects a changed_by member from another tenant'
 );
-SET CONSTRAINTS crm_deal_outcome_events_deal_same_org_fk IMMEDIATE;
-SELECT throws_like(
+SELECT pg_temp.throws_like(
   $$DELETE FROM public.crm_deals
     WHERE id = current_setting('test.deal_outcomes.deal_a')::uuid$$,
   '23503',

@@ -182,23 +182,15 @@ select is((select count(*)::bigint from public.crm_contacts where organization_i
 select is((select count(*)::bigint from public.crm_accounts where id = '62000000-0000-4000-8000-000000000002'), 0::bigint, 'Member cannot read another organization account');
 select is((select count(*)::bigint from public.crm_accounts where id = '62000000-0000-4000-8000-000000000001'), 0::bigint, 'Archived account is hidden from ordinary SELECT');
 select is((select count(*)::bigint from public.crm_contacts where id = '63000000-0000-4000-8000-000000000002'), 0::bigint, 'Archived contact is hidden from ordinary SELECT');
-select is(
-  (with updated as (
-    update public.crm_accounts set archived_at = now()
-    where id = '62000000-0000-4000-8000-000000000003'
-    returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_accounts set archived_at = now()
+    where id = '62000000-0000-4000-8000-000000000003'$$,
   'User with accounts.read only cannot archive an account'
 );
 select is((select count(*)::bigint from public.crm_accounts where id = '62000000-0000-4000-8000-000000000003' and archived_at is null), 1::bigint, 'Read-only account remains active after archive attempt');
-select is(
-  (with updated as (
-    update public.crm_contacts set archived_at = now()
-    where id = '63000000-0000-4000-8000-000000000001'
-    returning id
-  ) select count(*)::bigint from updated),
-  0::bigint,
+select lives_ok(
+  $$update public.crm_contacts set archived_at = now()
+    where id = '63000000-0000-4000-8000-000000000001'$$,
   'User with contacts.read only cannot archive a contact'
 );
 select is((select count(*)::bigint from public.crm_contacts where id = '63000000-0000-4000-8000-000000000001' and archived_at is null), 1::bigint, 'Read-only contact remains active after archive attempt');

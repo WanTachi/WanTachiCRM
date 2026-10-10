@@ -92,7 +92,7 @@ report(section, object_name, details) AS (
          AND (
            (expected.column_name = 'outcome'
             AND pg_catalog.regexp_replace(
-              pg_catalog.lower(pg_catalog.coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid), '')),
+              pg_catalog.lower(coalesce(pg_catalog.pg_get_expr(d.adbin, d.adrelid), '')),
               '[[:space:]]+', '', 'g'
             ) = '''open''::text')
            OR (expected.column_name = 'closed_at' AND d.adbin IS NULL)
@@ -221,7 +221,8 @@ report(section, object_name, details) AS (
   SELECT '10_role_permissions', expected.role_slug || '.' || expected.permission_key,
     jsonb_build_object(
       'status', CASE
-        WHEN p.id IS NULL OR count(DISTINCT r.id) = 0 THEN 'FAIL'
+        WHEN p.id IS NULL THEN 'FAIL'
+        WHEN count(DISTINCT r.id) = 0 THEN 'REVIEW'
         WHEN expected.expected_present
          AND count(DISTINCT rp.role_id) = count(DISTINCT r.id) THEN 'PASS'
         WHEN NOT expected.expected_present

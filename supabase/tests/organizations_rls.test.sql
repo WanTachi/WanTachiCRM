@@ -97,7 +97,7 @@ select set_config('request.jwt.claim.sub', '33333333-3333-4333-8333-333333333333
 select lives_ok($$select public.create_organization('New Team', 'new-team')$$, 'Authenticated user can atomically create an organization');
 select is((select count(*)::bigint from public.organizations where slug = 'new-team'), 1::bigint, 'Created organization is visible to its owner');
 select is((select count(*)::bigint from public.memberships as membership join public.organizations as organization on organization.id = membership.organization_id where organization.slug = 'new-team' and membership.user_id = auth.uid() and membership.status = 'active'), 1::bigint, 'Organization creation creates an active owner membership');
-select is((select count(*)::bigint from public.role_permissions as rp join public.roles as r on r.id = rp.role_id join public.permissions as p on p.id = rp.permission_id where r.organization_id = (select id from public.organizations where slug = 'new-team') and r.slug = 'owner'), 4::bigint, 'Created owner receives all foundation permissions');
+select is((select count(*)::bigint from public.role_permissions as rp join public.roles as r on r.id = rp.role_id join public.permissions as p on p.id = rp.permission_id where r.organization_id = (select id from public.organizations where slug = 'new-team') and r.slug = 'owner'), (select count(*)::bigint from public.permissions), 'Created owner receives all current permissions');
 
 select * from finish();
 rollback;
