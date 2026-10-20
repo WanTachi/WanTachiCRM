@@ -76,8 +76,30 @@ export type CrmDeal = {
   currency: string | null;
   owner_user_id: string | null;
   expected_close_date: string | null;
+  /** Present when the Deal Outcomes migration is available. */
+  outcome?: CrmDealOutcome;
+  /** Database-controlled; present when the Deal Outcomes migration is available. */
+  closed_at?: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type CrmDealOutcome = "open" | "won" | "lost";
+
+export type CrmDealOutcomeState = {
+  outcome: CrmDealOutcome;
+  closed_at: string | null;
+};
+
+export type CrmDealOutcomeEvent = {
+  id: string;
+  deal_id: string;
+  from_outcome: CrmDealOutcome | null;
+  to_outcome: CrmDealOutcome;
+  changed_at: string;
+  changed_by: string | null;
+  amount_snapshot: number | string | null;
+  currency_snapshot: string | null;
 };
 
 export type CrmDashboardDeal = Pick<CrmDeal, "amount" | "currency" | "created_at">;

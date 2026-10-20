@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { buildDeal360ActivityLinks, getDealRelationships } from "../src/lib/crm/deal-360";
 import { getReadableActivityLink } from "../src/lib/crm/activity-links";
 import {
-  getActiveDealForOrganization, getActiveStageForPipeline, getActivityReferencesForOrganization,
+  getActiveDealForOrganization, getActiveDealOutcomeForOrganization, getActiveStageForPipeline, getActivityReferencesForOrganization,
+  listDealOutcomeEventsForOrganization,
   listActivitiesForDeal, listTasksForDeal,
 } from "../src/lib/crm/queries";
 import type { CrmAccount, CrmActivity, CrmContact } from "../src/lib/crm/types";
@@ -120,7 +121,21 @@ describe("Deal 360 query boundaries (mocked; not PostgreSQL RLS tests)", () => {
     expect(tasks.query.order.mock.calls).toEqual([["due_at", { ascending: true, nullsFirst: false }], ["created_at", { ascending: false }]]);
   });
 
-  it.each([getActiveDealForOrganization, listTasksForDeal, listActivitiesForDeal])("masks database errors", async (query) => {
+  it("scopes outcome state and history to the active server organization and deal", async () => {
+    const state = mockSupabase({ outcome: "won", closed_at: "2026-10-05T12:00:00Z" });
+    expect(await getActiveDealOutcomeForOrganization(state.supabase, "server-org", dealId)).toMatchObject({ ok: true });
+    expect(state.query.eq.mock.calls).toEqual([["organization_id", "server-org"], ["id", dealId]]);
+    expect(state.query.is).toHaveBeenCalledWith("archived_at", null);
+
+    const history = mockSupabase([]);
+    expect(await listDealOutcomeEventsForOrganization(history.supabase, "server-org", dealId)).toEqual({ ok: true, value: [] });
+    expect(history.query.eq.mock.calls).toEqual([["organization_id", "server-org"], ["deal_id", dealId]]);
+    expect(history.query.order.mock.calls).toEqual([
+      ["changed_at", { ascending: true }], ["id", { ascending: true }],
+    ]);
+  });
+
+  it.each([getActiveDealForOrganization, getActiveDealOutcomeForOrganization, listDealOutcomeEventsForOrganization, listTasksForDeal, listActivitiesForDeal])("masks database errors", async (query) => {
     const mock = mockSupabase(null, { message: "private database details" });
     const result = await query(mock.supabase, "server-org", dealId);
     expect(result).toMatchObject({ ok: false, error: { code: "unavailable" } });

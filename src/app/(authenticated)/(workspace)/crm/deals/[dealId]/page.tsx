@@ -10,6 +10,8 @@ import { ActivityForm } from "@/components/crm/activity-form";
 import { Card } from "@/components/ui/card";
 import { createTaskAction } from "@/app/actions/crm/tasks";
 import { createActivityAction } from "@/app/actions/crm/activities";
+import { changeDealOutcomeAction } from "@/app/actions/crm/deals";
+import { DealOutcomeControls } from "@/components/crm/deal-outcome-controls";
 import { permissionError, resolveCrmAccess } from "@/lib/crm/access";
 import { isCrmRecordId } from "@/lib/crm/validation";
 import { buildDeal360ActivityLinks, getDealRelationships } from "@/lib/crm/deal-360";
@@ -17,14 +19,16 @@ import {
   getActiveAccountForOrganization,
   getActiveContactForOrganization,
   getActiveDealForOrganization,
+  getActiveDealOutcomeForOrganization,
   getActivePipelineForOrganization,
   getActiveStageForPipeline,
   getActivityReferencesForOrganization,
+  listDealOutcomeEventsForOrganization,
   listActivitiesForDeal,
   listAssignableMembersForOrganization,
   listTasksForDeal,
 } from "@/lib/crm/queries";
-import type { CrmActivity, CrmMemberOption, CrmTask } from "@/lib/crm/types";
+import type { CrmActivity, CrmDealOutcome, CrmDealOutcomeEvent, CrmMemberOption, CrmTask } from "@/lib/crm/types";
 
 export default async function DealDetailPage({ params }: { params: Promise<{ dealId: string }> }) {
   const access = await resolveCrmAccess();
@@ -51,7 +55,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ dea
   const canManageActivities = permissions.has("activities.manage");
   const canAssignOwners = permissions.has("members.read");
 
-  const [accountResult, contactResult, pipelineResult, stageResult, tasksResult, activitiesResult, membersResult] = await Promise.all([
+  const [accountResult, contactResult, pipelineResult, stageResult, tasksResult, activitiesResult, membersResult, outcomeResult] = await Promise.all([
     canReadAccounts && deal.account_id
       ? getActiveAccountForOrganization(supabase, organizationId, deal.account_id)
       : { ok: true as const, value: null },
@@ -69,6 +73,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ dea
     canManageTasks && canAssignOwners
       ? listAssignableMembersForOrganization(supabase, organizationId)
       : empty<CrmMemberOption>(),
+    getActiveDealOutcomeForOrganization(supabase, organizationId, deal.id),
   ]);
 
   if (!accountResult.ok) return <CrmPageNotice title="Не удалось загрузить аккаунт" message={accountResult.error.message} />;
@@ -81,6 +86,12 @@ export default async function DealDetailPage({ params }: { params: Promise<{ dea
 
   const referencesResult = await getActivityReferencesForOrganization(supabase, organizationId, activitiesResult.value, permissions);
   if (!referencesResult.ok) return <CrmPageNotice title="Не удалось загрузить связи активностей" message={referencesResult.error.message} />;
+  const outcomeEventsResult = outcomeResult.ok && outcomeResult.value
+    ? await listDealOutcomeEventsForOrganization(supabase, organizationId, deal.id)
+    : { ok: true as const, value: [] as CrmDealOutcomeEvent[] };
+  const outcomeUnavailableMessage = outcomeResult.ok
+    ? "Статус сделки пока недоступен."
+    : outcomeResult.error.message;
   const { account, contact } = getDealRelationships(deal, {
     account: accountResult.value, contact: contactResult.value, canReadAccounts, canReadContacts,
   });
@@ -112,6 +123,8 @@ export default async function DealDetailPage({ params }: { params: Promise<{ dea
             <span>Этап: {stage?.name ?? "недоступен или архивирован"}</span>
           </> : null}
           <span>Ожидаемое закрытие: {deal.expected_close_date ? formatDate(deal.expected_close_date) : "не указано"}</span>
+          {outcomeResult.ok && outcomeResult.value ? <span>Статус: {formatOutcome(outcomeResult.value.outcome)}</span> : null}
+          {outcomeResult.ok && outcomeResult.value?.closed_at ? <span>Закрыта: {formatDateTime(outcomeResult.value.closed_at)}</span> : null}
           <span>Владелец: {deal.owner_user_id === userId ? "Вы" : deal.owner_user_id ? "участник команды" : "не назначен"}</span>
           {canReadAccounts ? <span>Аккаунт: {account
             ? <Link className="crm-text-link" href={`/crm/accounts/${account.id}`}>{account.name}</Link>
@@ -124,6 +137,29 @@ export default async function DealDetailPage({ params }: { params: Promise<{ dea
         </div>
         {deal.description ? <p className="crm-record-body">{deal.description}</p> : null}
       </Card>
+
+      {outcomeResult.ok && outcomeResult.value ? (
+        <Card className="crm-panel">
+          <div className="crm-panel-heading">
+            <h2 className="section-heading">Статус сделки</h2>
+          </div>
+          {canManageDeals ? (
+            <DealOutcomeControls dealId={deal.id} outcome={outcomeResult.value.outcome} action={changeDealOutcomeAction} />
+          ) : (
+            <div className="crm-record-details"><span>Текущий статус: <strong>{formatOutcome(outcomeResult.value.outcome)}</strong></span></div>
+          )}
+        </Card>
+      ) : (
+        <div className="crm-notice" role="status">{outcomeUnavailableMessage}</div>
+      )}
+
+      {outcomeResult.ok && outcomeResult.value ? <section className="crm-section" aria-labelledby="deal-outcome-history-heading">
+        <div className="crm-list-heading">
+          <div><h2 className="section-heading" id="deal-outcome-history-heading">История статусов</h2><p className="section-description">Изменения статуса и снимки суммы сделки</p></div>
+          <span className="crm-list-meta">{outcomeEventsResult.ok ? outcomeEventsResult.value.length : "—"}</span>
+        </div>
+        {outcomeEventsResult.ok ? <DealOutcomeHistory events={outcomeEventsResult.value} /> : <div className="crm-notice" role="status">{outcomeEventsResult.error.message}</div>}
+      </section> : null}
 
       {canReadTasks ? <section className="crm-section" aria-labelledby="deal-tasks-heading">
         <div className="crm-list-heading">
@@ -170,4 +206,41 @@ function CreationSection({ title, id, children }: { title: string; id: string; c
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString("ru-RU", { timeZone: "UTC" });
+}
+
+function formatDateTime(value: string): string {
+  return `${new Date(value).toLocaleString("ru-RU", { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" })} UTC`;
+}
+
+function formatOutcome(value: CrmDealOutcome): string {
+  return { open: "Открыта", won: "Выиграна", lost: "Проиграна" }[value];
+}
+
+function formatOutcomeSnapshot(event: CrmDealOutcomeEvent): string {
+  if (event.amount_snapshot === null && event.currency_snapshot === null) return "Сумма не указана";
+  const amount = event.amount_snapshot === null ? "не указана" : String(event.amount_snapshot);
+  return event.currency_snapshot ? `${amount} ${event.currency_snapshot}` : amount;
+}
+
+function DealOutcomeHistory({ events }: { events: CrmDealOutcomeEvent[] }) {
+  if (events.length === 0) {
+    return <Card className="crm-empty-state"><p>Переходов между статусами пока нет.</p></Card>;
+  }
+
+  return (
+    <div className="crm-record-list" aria-label="История статусов сделки">
+      {events.map((event) => (
+        <article className="crm-record" key={event.id}>
+          <div className="crm-record-main">
+            <div className="crm-title-row">
+              <h3>{event.from_outcome ? formatOutcome(event.from_outcome) : "Создана"} → {formatOutcome(event.to_outcome)}</h3>
+              <span className="badge">{formatOutcome(event.to_outcome)}</span>
+            </div>
+            <time className="table-secondary" dateTime={event.changed_at}>{formatDateTime(event.changed_at)}</time>
+            <div className="crm-record-details"><span>Снимок суммы: {formatOutcomeSnapshot(event)}</span></div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
 }

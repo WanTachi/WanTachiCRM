@@ -1,6 +1,7 @@
-import { Children, isValidElement, type ComponentProps, type ReactElement, type ReactNode, type SelectHTMLAttributes } from "react";
+import { Children, isValidElement, type ComponentProps, type InputHTMLAttributes, type ReactElement, type ReactNode, type SelectHTMLAttributes } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DealForm } from "../src/components/crm/deal-form";
+import { Input } from "../src/components/ui/input";
 
 // Shallow render in the existing Node test environment. Browser selection and
 // rerender behavior must also be checked in a browser; this tests the React props.
@@ -12,6 +13,7 @@ vi.mock("react", async (importOriginal) => ({
 
 type Props = ComponentProps<typeof DealForm>;
 type Select = ReactElement<SelectHTMLAttributes<HTMLSelectElement>>;
+type InputElement = ReactElement<InputHTMLAttributes<HTMLInputElement>>;
 const accountId = "a3000000-0000-4000-8000-000000000001";
 const contactId = "a4000000-0000-4000-8000-000000000001";
 const secondContactId = "a4000000-0000-4000-8000-000000000002";
@@ -31,13 +33,29 @@ function select(name: string, overrides: Partial<Props> = {}): Select {
   let found: Select | undefined;
   function visit(node: ReactNode) {
     Children.forEach(node, (child) => {
-      if (!isValidElement<{ name?: string; children?: ReactNode }>(child)) return;
+      if (!isValidElement<{ name?: string; id?: string; type?: string; children?: ReactNode }>(child)) return;
       if (child.type === "select" && child.props.name === name) found = child as Select;
       visit(child.props.children);
     });
   }
   visit(DealForm({ ...props, ...overrides }));
   if (!found) throw new Error(`Missing select: ${name}`);
+  return found;
+}
+
+function input(name: string, overrides: Partial<Props> = {}): InputElement {
+  let found: InputElement | undefined;
+  function visit(node: ReactNode) {
+    Children.forEach(node, (child) => {
+      if (!isValidElement<{ name?: string; id?: string; type?: string; children?: ReactNode }>(child)) return;
+      if (!found && child.type === Input
+        && (child.props.name === name || child.props.id?.endsWith(`-${name}`))
+        && child.props.type !== "hidden") found = child as InputElement;
+      visit(child.props.children);
+    });
+  }
+  visit(DealForm({ ...props, ...overrides }));
+  if (!found) throw new Error(`Missing input: ${name}`);
   return found;
 }
 
@@ -80,5 +98,20 @@ describe("DealForm contact prefill", () => {
     };
     expect(select("contact_id", { deal, defaultContactId: secondContactId }).props.defaultValue).toBe(contactId);
     expect(select("contact_id", { deal: { ...deal, contact_id: null }, defaultContactId: contactId }).props.defaultValue).toBe("");
+  });
+
+  it("locks Won amount and currency fields while preserving their submitted values", () => {
+    const deal: NonNullable<Props["deal"]> = {
+      id: "a5000000-0000-4000-8000-000000000001", name: "Won deal", description: null,
+      pipeline_id: "a6000000-0000-4000-8000-000000000001", stage_id: "a7000000-0000-4000-8000-000000000001",
+      account_id: null, contact_id: null, owner_user_id: null, amount: "1200.50", currency: "USD",
+      expected_close_date: null, outcome: "won", closed_at: "2026-10-05T12:00:00Z", ...timestamps,
+    };
+    const amount = input("amount", { deal, lockFinancialFields: true });
+    const currency = input("currency", { deal, lockFinancialFields: true });
+    expect(amount.props.disabled).toBe(true);
+    expect(currency.props.disabled).toBe(true);
+    expect(amount.props.defaultValue).toBe("1200.50");
+    expect(currency.props.defaultValue).toBe("USD");
   });
 });

@@ -6,7 +6,7 @@ import { TaskForm } from "../src/components/crm/task-form";
 import { ActivityForm } from "../src/components/crm/activity-form";
 import { resolveCrmAccess } from "../src/lib/crm/access";
 import * as queries from "../src/lib/crm/queries";
-import type { CrmAccess, CrmAccount, CrmActivity, CrmContact, CrmDeal, CrmTask } from "../src/lib/crm/types";
+import type { CrmAccess, CrmAccount, CrmActivity, CrmContact, CrmDeal, CrmDealOutcomeEvent, CrmTask } from "../src/lib/crm/types";
 
 // Only server boundaries are mocked; render the actual page and shared UI.
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); } }));
@@ -17,8 +17,9 @@ vi.mock("../src/app/actions/crm/tasks", () => ({ createTaskAction: vi.fn() }));
 vi.mock("../src/app/actions/crm/activities", () => ({ createActivityAction: vi.fn() }));
 vi.mock("../src/lib/crm/queries", () => ({
   getActiveDealForOrganization: vi.fn(), getActiveAccountForOrganization: vi.fn(), getActiveContactForOrganization: vi.fn(),
+  getActiveDealOutcomeForOrganization: vi.fn(),
   getActivePipelineForOrganization: vi.fn(), getActiveStageForPipeline: vi.fn(), getActivityReferencesForOrganization: vi.fn(),
-  listTasksForDeal: vi.fn(), listActivitiesForDeal: vi.fn(), listAssignableMembersForOrganization: vi.fn(),
+  listTasksForDeal: vi.fn(), listActivitiesForDeal: vi.fn(), listAssignableMembersForOrganization: vi.fn(), listDealOutcomeEventsForOrganization: vi.fn(),
 }));
 
 const dates = { created_at: "2026-10-01T12:00:00Z", updated_at: "2026-10-01T12:00:00Z" };
@@ -64,6 +65,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   access();
   vi.mocked(queries.getActiveDealForOrganization).mockResolvedValue({ ok: true, value: deal });
+  vi.mocked(queries.getActiveDealOutcomeForOrganization).mockResolvedValue({ ok: true, value: { outcome: "open", closed_at: null } });
   vi.mocked(queries.getActiveAccountForOrganization).mockResolvedValue({ ok: true, value: account });
   vi.mocked(queries.getActiveContactForOrganization).mockResolvedValue({ ok: true, value: contact });
   vi.mocked(queries.getActivePipelineForOrganization).mockResolvedValue({ ok: true, value: {
@@ -75,6 +77,7 @@ beforeEach(() => {
   vi.mocked(queries.listTasksForDeal).mockResolvedValue({ ok: true, value: [task] });
   vi.mocked(queries.listActivitiesForDeal).mockResolvedValue({ ok: true, value: [activity] });
   vi.mocked(queries.listAssignableMembersForOrganization).mockResolvedValue({ ok: true, value: [] });
+  vi.mocked(queries.listDealOutcomeEventsForOrganization).mockResolvedValue({ ok: true, value: [] as CrmDealOutcomeEvent[] });
   vi.mocked(queries.getActivityReferencesForOrganization).mockResolvedValue({ ok: true, value: {
     accountNames: new Map([[account.id, account.name]]), contactNames: new Map([[contact.id, "Анна Иванова"]]),
     dealNames: new Map([[deal.id, deal.name]]), taskNames: new Map([[task.id, task.title]]),
@@ -105,6 +108,7 @@ describe("Deal 360 page with mocked server boundaries", () => {
     for (const text of ["Продление", "1200 USD", "Продажи", "Переговоры", "Позвонить", "Первый звонок", "Компания", "Анна Иванова"]) expect(html).toContain(text);
     for (const path of [`/crm/accounts/${account.id}`, `/crm/contacts/${contact.id}`, `/crm/pipelines/${deal.pipeline_id}`, `/crm/deals/${deal.id}`]) expect(html).toContain(`href="${path}"`);
     expect(html).not.toContain("Изменить сделку");
+    expect(html).not.toContain("Отметить выигранной");
     expect(elements(tree).filter((element) => element.type === TaskForm || element.type === ActivityForm)).toEqual([]);
     expect(queries.getActiveStageForPipeline).toHaveBeenCalledWith(serverSupabase, "server-org", deal.pipeline_id, deal.stage_id);
     expect(queries.listTasksForDeal).toHaveBeenCalledWith(serverSupabase, "server-org", deal.id);
@@ -141,6 +145,29 @@ describe("Deal 360 page with mocked server boundaries", () => {
     }
     expect(nodes.some((element) => element.props.href === `/crm/deals?edit=${deal.id}`)).toBe(true);
     expect(queries.listAssignableMembersForOrganization).toHaveBeenCalledWith(serverSupabase, "server-org");
+  });
+
+  it("renders the current outcome and its append-only history for readers", async () => {
+    vi.mocked(queries.getActiveDealOutcomeForOrganization).mockResolvedValueOnce({ ok: true, value: { outcome: "won", closed_at: "2026-10-05T12:00:00Z" } });
+    vi.mocked(queries.listDealOutcomeEventsForOrganization).mockResolvedValueOnce({ ok: true, value: [{
+      id: "a9100000-0000-4000-8000-000000000001", deal_id: deal.id, from_outcome: "open", to_outcome: "won",
+      changed_at: "2026-10-05T12:00:00Z", changed_by: "current-user", amount_snapshot: "1200", currency_snapshot: "USD",
+    }] });
+    const html = renderToStaticMarkup(await page());
+    expect(html).toContain("Выиграна");
+    expect(html).toContain("Открыта → Выиграна");
+    expect(html).toContain("1200 USD");
+    expect(queries.listDealOutcomeEventsForOrganization).toHaveBeenCalledWith(serverSupabase, "server-org", deal.id);
+  });
+
+  it("keeps the base Deal 360 readable and shows a clear notice before the outcomes migration", async () => {
+    vi.mocked(queries.getActiveDealOutcomeForOrganization).mockResolvedValueOnce({ ok: false, error: {
+      code: "unavailable", message: "Статусы сделок пока недоступны. Сначала примените обновление базы данных Deal Outcomes.",
+    } });
+    const html = renderToStaticMarkup(await page());
+    expect(html).toContain("Продление");
+    expect(html).toContain("примените обновление базы данных Deal Outcomes");
+    expect(queries.listDealOutcomeEventsForOrganization).not.toHaveBeenCalled();
   });
 
   it("allows manage-only creation while keeping unreadable tasks/activities and references hidden", async () => {

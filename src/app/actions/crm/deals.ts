@@ -4,11 +4,20 @@ import { revalidatePath } from "next/cache";
 import { revalidateDashboard } from "@/lib/crm/dashboard";
 import { notFoundError, permissionError, resolveCrmAccess, unavailableError } from "@/lib/crm/access";
 import {
+  getActiveDealForOrganization,
   getActivePipelineForOrganization,
   getActiveStageForPipeline,
   isActiveOrganizationMember,
   listDealsForOrganization,
 } from "@/lib/crm/queries";
+import {
+  dealOutcomeSchemaError,
+  dealOutcomeValidationError,
+  isDealOutcomeSchemaError,
+  isFinitePositiveDealAmount,
+  isValidDealCurrency,
+  parseDealOutcome,
+} from "@/lib/crm/deal-outcomes";
 import {
   invalidRecordIdError,
   isCrmRecordId,
@@ -208,6 +217,66 @@ export async function updateDealAction(
 
   revalidateDealViews(parsed.value.pipeline_id);
   return { success: "Изменения сделки сохранены." };
+}
+
+export async function changeDealOutcomeAction(
+  _previousState: CrmFormState,
+  formData: FormData,
+): Promise<CrmFormState> {
+  const access = await resolveCrmAccess();
+  if (!access.ok) return { error: access.error };
+  if (!access.value.permissions.has("deals.manage")) {
+    return { error: permissionError("сделкам", "manage") };
+  }
+  if (!access.value.permissions.has("deals.read")) {
+    return { error: permissionError("сделкам", "read") };
+  }
+
+  const id = formData.get("id");
+  if (!isCrmRecordId(id)) return { error: invalidRecordIdError("сделку") };
+  const outcome = parseDealOutcome(formData.get("outcome"));
+  if (!outcome) return { error: { code: "invalid_input", message: "Выберите допустимый статус сделки." } };
+
+  const currentDeal = await getActiveDealForOrganization(
+    access.value.supabase,
+    access.value.organizationId,
+    id,
+  );
+  if (!currentDeal.ok) return { error: currentDeal.error };
+  if (!currentDeal.value) return { error: notFoundError("сделка") };
+
+  if (outcome === "won"
+    && (!isFinitePositiveDealAmount(currentDeal.value.amount)
+      || !isValidDealCurrency(currentDeal.value.currency))) {
+    return { error: dealOutcomeValidationError() };
+  }
+
+  try {
+    const { count, error } = await access.value.supabase
+      .from("crm_deals")
+      .update({ outcome }, { count: "exact" })
+      .eq("organization_id", access.value.organizationId)
+      .eq("id", id)
+      .is("archived_at", null);
+
+    if (error) {
+      return {
+        error: isDealOutcomeSchemaError(error)
+          ? dealOutcomeSchemaError()
+          : unavailableError("Не удалось изменить статус сделки. Проверьте доступ и попробуйте снова."),
+      };
+    }
+    if (count !== 1) return { error: notFoundError("сделка") };
+  } catch (error) {
+    return {
+      error: isDealOutcomeSchemaError(error)
+        ? dealOutcomeSchemaError()
+        : unavailableError("Не удалось изменить статус сделки. Попробуйте снова."),
+    };
+  }
+
+  revalidateDealViews(currentDeal.value.pipeline_id);
+  return { success: "Статус сделки обновлён." };
 }
 
 export async function archiveDealAction(

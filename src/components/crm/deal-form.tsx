@@ -28,6 +28,7 @@ export function DealForm({
   canReadContacts,
   defaultAccountId,
   defaultContactId,
+  lockFinancialFields = false,
   action,
 }: {
   deal?: CrmDeal;
@@ -42,6 +43,7 @@ export function DealForm({
   canReadContacts: boolean;
   defaultAccountId?: string;
   defaultContactId?: string;
+  lockFinancialFields?: boolean;
   action: CrmMutationAction;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
@@ -60,6 +62,7 @@ export function DealForm({
   const selectedAccountId = deal?.account_id ?? defaultAccountId ?? "";
   const selectedContactId = deal ? deal.contact_id ?? "" : defaultContactId ?? "";
   const initialContactId = contactOptions.some((item) => item.id === selectedContactId) ? selectedContactId : "";
+  const financialFieldsLocked = Boolean(lockFinancialFields && deal?.outcome === "won");
 
   return (
     <form action={formAction} className="crm-form">
@@ -141,11 +144,14 @@ export function DealForm({
         ) : null}
         <div className="crm-field">
           <label className="auth-label" htmlFor={`${prefix}-amount`}>Сумма</label>
-          <Input id={`${prefix}-amount`} name="amount" type="number" min={0} step="any" defaultValue={deal?.amount ?? ""} />
+          <Input id={`${prefix}-amount`} name={financialFieldsLocked ? undefined : "amount"} type="number" min={0} step="any" defaultValue={deal?.amount ?? ""} disabled={financialFieldsLocked} />
+          {financialFieldsLocked ? <input type="hidden" name="amount" value={deal?.amount ?? ""} readOnly /> : null}
         </div>
         <div className="crm-field">
           <label className="auth-label" htmlFor={`${prefix}-currency`}>Валюта</label>
-          <Input id={`${prefix}-currency`} name="currency" maxLength={3} placeholder="USD" defaultValue={deal?.currency ?? ""} />
+          <Input id={`${prefix}-currency`} name={financialFieldsLocked ? undefined : "currency"} maxLength={3} placeholder="USD" defaultValue={deal?.currency ?? ""} disabled={financialFieldsLocked} />
+          {financialFieldsLocked ? <input type="hidden" name="currency" value={deal?.currency ?? ""} readOnly /> : null}
+          {financialFieldsLocked ? <span className="field-hint">Сумма и валюта выигранной сделки защищены после закрытия.</span> : null}
         </div>
         <div className="crm-field">
           <label className="auth-label" htmlFor={`${prefix}-close-date`}>Ожидаемая дата закрытия</label>

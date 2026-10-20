@@ -12,6 +12,7 @@ import {
   listAssignableMembersForOrganization,
   listContactsForOrganization,
   listDealsForOrganization,
+  getActiveDealOutcomeForOrganization,
   listPipelinesForOrganization,
 } from "@/lib/crm/queries";
 import { isCrmRecordId } from "@/lib/crm/validation";
@@ -68,6 +69,12 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
   const editingDeal = canRead && requestedEdit && isCrmRecordId(requestedEdit)
     ? dealsResult.value.find((deal) => deal.id === requestedEdit)
     : undefined;
+  const editingDealOutcome = editingDeal
+    ? await getActiveDealOutcomeForOrganization(access.value.supabase, access.value.organizationId, editingDeal.id)
+    : null;
+  const editingDealForForm = editingDeal && editingDealOutcome?.ok && editingDealOutcome.value
+    ? { ...editingDeal, ...editingDealOutcome.value }
+    : editingDeal;
   const pipelineNames = new Map(pipelinesResult.value.map((pipeline) => [pipeline.id, pipeline.name]));
   const stageNames = new Map(stagesResult.value.map((stage) => [stage.id, stage.name]));
   const accountNames = new Map(accountsResult.value.map((account) => [account.id, account.name]));
@@ -116,6 +123,9 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
       {requestedEdit && !editingDeal ? (
         <div className="crm-notice" role="status">{notFoundError("сделка").message}</div>
       ) : null}
+      {editingDeal && editingDealOutcome && !editingDealOutcome.ok ? (
+        <div className="crm-notice" role="status">{editingDealOutcome.error.message}</div>
+      ) : null}
       {!canRead && canManage ? (
         <div className="crm-notice" role="status">Вы можете создавать сделки, но у вас нет права просматривать существующие.</div>
       ) : null}
@@ -139,7 +149,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
           ) : (
             <DealForm
               key={editingDeal?.id ?? "new-deal"}
-              deal={editingDeal}
+              deal={editingDealForForm}
               pipelines={pipelinesResult.value}
               stages={stagesResult.value}
               accounts={accountsResult.value}
@@ -149,6 +159,7 @@ export default async function DealsPage({ searchParams }: DealsPageProps) {
               canAssignOwners={canAssignOwners}
               canReadAccounts={canReadAccounts}
               canReadContacts={canReadContacts}
+              lockFinancialFields={editingDealOutcome?.ok === true && editingDealOutcome.value?.outcome === "won"}
               action={editingDeal ? updateDealAction : createDealAction}
             />
           )}

@@ -10,8 +10,11 @@ import type {
   CrmPipelineStage,
   CrmPipelineWithStageCount,
   CrmDashboardDeal,
+  CrmDealOutcomeEvent,
+  CrmDealOutcomeState,
   CrmResult,
 } from "@/lib/crm/types";
+import { dealOutcomeSchemaError, isDealOutcomeSchemaError } from "@/lib/crm/deal-outcomes";
 
 type ServerSupabase = Awaited<ReturnType<typeof createSupabaseServerClient>>;
 
@@ -520,6 +523,73 @@ export async function getActiveDealForOrganization(
     return { ok: true, value: data as CrmDeal | null };
   } catch {
     return { ok: false, error: { code: "unavailable", message: "Не удалось загрузить сделку." } };
+  }
+}
+
+/** Reads the optional Deal Outcomes extension without changing the base Deal query. */
+export async function getActiveDealOutcomeForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  dealId: string,
+): Promise<CrmResult<CrmDealOutcomeState | null>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deals")
+      .select("outcome, closed_at")
+      .eq("organization_id", organizationId)
+      .eq("id", dealId)
+      .is("archived_at", null)
+      .maybeSingle();
+
+    if (error) {
+      return {
+        ok: false,
+        error: isDealOutcomeSchemaError(error)
+          ? dealOutcomeSchemaError()
+          : { code: "unavailable", message: "Не удалось загрузить статус сделки." },
+      };
+    }
+    return { ok: true, value: data as CrmDealOutcomeState | null };
+  } catch (error) {
+    return {
+      ok: false,
+      error: isDealOutcomeSchemaError(error)
+        ? dealOutcomeSchemaError()
+        : { code: "unavailable", message: "Не удалось загрузить статус сделки." },
+    };
+  }
+}
+
+export async function listDealOutcomeEventsForOrganization(
+  supabase: ServerSupabase,
+  organizationId: string,
+  dealId: string,
+): Promise<CrmResult<CrmDealOutcomeEvent[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("crm_deal_outcome_events")
+      .select("id, deal_id, from_outcome, to_outcome, changed_at, changed_by, amount_snapshot, currency_snapshot")
+      .eq("organization_id", organizationId)
+      .eq("deal_id", dealId)
+      .order("changed_at", { ascending: true })
+      .order("id", { ascending: true });
+
+    if (error) {
+      return {
+        ok: false,
+        error: isDealOutcomeSchemaError(error)
+          ? dealOutcomeSchemaError()
+          : { code: "unavailable", message: "Не удалось загрузить историю статуса сделки." },
+      };
+    }
+    return { ok: true, value: (data ?? []) as CrmDealOutcomeEvent[] };
+  } catch (error) {
+    return {
+      ok: false,
+      error: isDealOutcomeSchemaError(error)
+        ? dealOutcomeSchemaError()
+        : { code: "unavailable", message: "Не удалось загрузить историю статуса сделки." },
+    };
   }
 }
 
